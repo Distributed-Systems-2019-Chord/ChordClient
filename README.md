@@ -10,6 +10,9 @@ For now it's based on the following example: https://developer.lightbend.com/gui
 ## How to run
 run: `mvn compile exec:exec`
 
+To run central node use parameter: `-Dconfig.resource=/centralNode.conf`
+To run regular nodes use parameter: `-Dconfig.resource=/regularNode.conf`
+
 ## Branching
 Branching will be done according the [Feature Branching Workflow](https://www.atlassian.com/git/tutorials/comparing-workflows/feature-branch-workflow).
 

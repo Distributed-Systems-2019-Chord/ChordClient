@@ -1,5 +1,6 @@
 package com.lightbend.akka.sample;
 
+import akka.actor.ActorSelection;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.Behavior;
 import akka.actor.typed.javadsl.*;
@@ -24,6 +25,9 @@ public class GreeterMain extends AbstractBehavior<GreeterMain.Start> {
         super(context);
         //#create-actors
         greeter = context.spawn(Greeter.create(), "greeter");
+
+//        ActorSelection selection =
+//                context.actorSelection("akka://actorSystemName@10.0.0.1:25520/user/actorName");
         //#create-actors
     }
 

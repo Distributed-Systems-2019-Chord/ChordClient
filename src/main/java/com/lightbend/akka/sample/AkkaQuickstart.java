@@ -1,5 +1,6 @@
 package com.lightbend.akka.sample;
 
+import akka.actor.ActorSelection;
 import akka.actor.typed.ActorSystem;
 
 import java.io.IOException;
