@@ -11,10 +11,10 @@ public class ChordStart {
         ActorSystem system = ActorSystem.create("ChordNetwork"); // Setup actor system
         ActorRef node = system.actorOf(Props.create(Node.class)); // Create new actor: node
 
-        node.tell("JOIN", ActorRef.noSender()); // Send message
+//        node.tell("JOIN", ActorRef.noSender()); // Send message
 
-        system.stop(node); // Quit node
-
-        system.terminate(); // Terminate application
+//        system.stop(node); // Quit node
+//
+//        system.terminate(); // Terminate application
     }
 }
