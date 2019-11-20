@@ -21,12 +21,17 @@ public class Node extends AbstractActor {
         Config config = getContext().getSystem().settings().config();
         final String nodeType = config.getString("myapp.nodeType");
         log.info("DEBUG -- nodetype: " + nodeType);
+
         if(nodeType.equals("regular")){
             final String centralEntityAddress = config.getString("myapp.centralEntityAddress");
-            log.info("Sending message to: " + "akka.tcp://ChordNetwork@" + centralEntityAddress + "/user/");
-            ActorSelection selection = getContext().actorSelection("akka://ChordNetwork@" + centralEntityAddress + "/user/a");
-//          get fingertable from central entity
+            String centralNodeAddress = "akka://ChordNetwork@" + centralEntityAddress + "/user/a";
+            log.info("Sending message to: " + centralNodeAddress);
+            ActorSelection selection = getContext().actorSelection(centralNodeAddress);
+
+//            test call
             selection.tell("newNode", getSelf());
+
+//          TODO get fingertable from central entity
 //            CompletableFuture<Object> future = getContext().ask(selection,
 //                    new fingerTableActor.getFingerTable(line), 1000).toCompletableFuture();
         }
