@@ -16,14 +16,15 @@ public class Node extends AbstractActor {
     @Override
     public void preStart() throws Exception {
         super.preStart();
-        log.info("Starting up...");
+        log.info("Starting up...     ref: " + getSelf());
 
         Config config = getContext().getSystem().settings().config();
         final String nodeType = config.getString("myapp.nodeType");
         log.info("DEBUG -- nodetype: " + nodeType);
-        if(nodeType == "regular"){
+        if(nodeType.equals("regular")){
             final String centralEntityAddress = config.getString("myapp.centralEntityAddress");
-            ActorSelection selection = getContext().actorSelection("akka.tcp://ChordNetwork@" + centralEntityAddress + "/user/");
+            log.info("Sending message to: " + "akka.tcp://ChordNetwork@" + centralEntityAddress + "/user/");
+            ActorSelection selection = getContext().actorSelection("akka://ChordNetwork@" + centralEntityAddress + "/user/a");
 //          get fingertable from central entity
             selection.tell("newNode", getSelf());
 //            CompletableFuture<Object> future = getContext().ask(selection,
