@@ -1,4 +1,4 @@
-package org.distributed.systems.chord.node;
+package org.distributed.systems.chord.actors;
 
 import akka.actor.AbstractActor;
 import akka.actor.Props;
@@ -6,7 +6,7 @@ import akka.japi.pf.FI;
 import org.distributed.systems.chord.messaging.NodeJoinMessage;
 import org.distributed.systems.chord.model.Successor;
 
-public class SuccessorManagingActor extends AbstractActor {
+public class SuccessorManager extends AbstractActor {
 
     private Successor successor;
 

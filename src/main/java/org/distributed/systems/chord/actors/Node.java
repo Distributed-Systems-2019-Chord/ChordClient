@@ -1,4 +1,4 @@
-package org.distributed.systems.chord.node;
+package org.distributed.systems.chord.actors;
 
 import akka.actor.AbstractActor;
 import akka.event.Logging;

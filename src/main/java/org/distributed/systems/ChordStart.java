@@ -3,7 +3,7 @@ package org.distributed.systems;
 import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 import akka.actor.Props;
-import org.distributed.systems.chord.node.Node;
+import org.distributed.systems.chord.actors.Node;
 
 public class ChordStart {
 
