@@ -22,8 +22,8 @@ public class ChordStart {
         final ActorRef node = system.actorOf(Props.create(Node.class), "ChordActor0");
 
         // Create messages
-        NodeJoinMessage joinMessage = new NodeJoinMessage(startNode.getId(), "127.0.0.1");
-        NodeLeaveMessage leaveMessage = new NodeLeaveMessage(startNode.getId());
+        NodeJoinMessage joinMessage = new NodeJoinMessage(startNode);
+        NodeLeaveMessage leaveMessage = new NodeLeaveMessage(startNode);
         GetFingerTableMessage getFingerTableMessage = new GetFingerTableMessage();
 
         String hashKey = hashUtil.hash(String.valueOf(startNode.getId()));

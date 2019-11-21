@@ -1,23 +1,18 @@
 package org.distributed.systems.chord.messaging;
 
+import org.distributed.systems.chord.model.ChordNode;
+
 import java.io.Serializable;
 
 public class NodeJoinMessage implements Serializable {
 
-    private long nodeId;
+    private ChordNode node;
 
-    private String remoteAddress;
-
-    public NodeJoinMessage(long nodeId, String remoteAddress) {
-        this.nodeId = nodeId;
-        this.remoteAddress = remoteAddress;
+    public NodeJoinMessage(ChordNode node) {
+        this.node = node;
     }
 
-    public long getNodeId() {
-        return nodeId;
-    }
-
-    public String getRemoteAddress() {
-        return remoteAddress;
+    public ChordNode getNode() {
+        return node;
     }
 }
