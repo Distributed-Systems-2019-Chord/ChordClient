@@ -6,6 +6,6 @@ public class HashUtil implements IHashUtil {
 
     @Override
     public String hash(String input) {
-        return null;
+        return input;
     }
 }

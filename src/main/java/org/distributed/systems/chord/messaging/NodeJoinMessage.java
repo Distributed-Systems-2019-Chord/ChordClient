@@ -4,13 +4,20 @@ import java.io.Serializable;
 
 public class NodeJoinMessage implements Serializable {
 
-    private String nodeId;
+    private long nodeId;
 
-    public NodeJoinMessage(String nodeId) {
+    private String remoteAddress;
+
+    public NodeJoinMessage(long nodeId, String remoteAddress) {
         this.nodeId = nodeId;
+        this.remoteAddress = remoteAddress;
     }
 
-    public String getNodeId() {
+    public long getNodeId() {
         return nodeId;
+    }
+
+    public String getRemoteAddress() {
+        return remoteAddress;
     }
 }
