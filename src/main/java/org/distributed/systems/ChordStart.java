@@ -45,10 +45,6 @@ public class ChordStart {
         node.tell(leaveMessage, ActorRef.noSender());
         node.tell(getFingerTableMessage, ActorRef.noSender());
 
-//        node.tell(new PutValueMessage("0", "0"), ActorRef.noSender()); // Send message
-
-//        node.tell(new GetValueMessage("0"), ActorRef.noSender());
-
 //        system.stop(node); // Quit node
 
 //        system.terminate(); // Terminate application
