@@ -24,7 +24,8 @@ public class ChordStart {
         // Create messages
         NodeJoinMessage joinMessage = new NodeJoinMessage(startNode);
         NodeLeaveMessage leaveMessage = new NodeLeaveMessage(startNode);
-        GetFingerTableMessage getFingerTableMessage = new GetFingerTableMessage();
+        String hashId = hashUtil.hash(String.valueOf(startNode.getId()));
+        GetFingerTableMessage getFingerTableMessage = new GetFingerTableMessage(hashId);
 
         String hashKey = hashUtil.hash(String.valueOf(startNode.getId()));
         PutValueMessage putValueMessage = new PutValueMessage(hashKey, "TEST VALUE");

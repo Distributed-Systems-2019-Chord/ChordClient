@@ -4,6 +4,7 @@ import akka.actor.AbstractActor;
 import akka.actor.ActorSelection;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
+import com.typesafe.config.Config;
 import org.distributed.systems.chord.messaging.*;
 import org.distributed.systems.chord.model.ChordNode;
 import org.distributed.systems.chord.service.FingerTableService;
@@ -12,9 +13,6 @@ import java.io.Serializable;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import com.typesafe.config.Config;
-
-import java.util.concurrent.CompletableFuture;
 
 public class Node extends AbstractActor {
 
@@ -37,7 +35,7 @@ public class Node extends AbstractActor {
         final String nodeType = config.getString("myapp.nodeType");
         log.info("DEBUG -- nodetype: " + nodeType);
 
-        if(nodeType.equals("regular")){
+        if (nodeType.equals("regular")) {
             final String centralEntityAddress = config.getString("myapp.centralEntityAddress");
             String centralNodeAddress = "akka://ChordNetwork@" + centralEntityAddress + "/user/a";
             log.info("Sending message to: " + centralNodeAddress);
@@ -60,9 +58,9 @@ public class Node extends AbstractActor {
                 .match(NodeJoinMessage.class, nodeJoinMessage -> fingerTableService.addSuccessor(nodeJoinMessage.getNode()))
                 .match(PutValueMessage.class, putValueMessage -> {
                     String key = putValueMessage.getKey();
-                    Object value = putValueMessage.getValue();
+                    Serializable value = putValueMessage.getValue();
                     log.info("key, value: " + key + " " + value);
-                    valueStore.put(putValueMessage.getKey(), putValueMessage.getValue());
+                    valueStore.put(key, value);
                 })
                 .match(GetValueMessage.class, getValueMessage -> {
                     Serializable val = valueStore.get(getValueMessage.getKey());
