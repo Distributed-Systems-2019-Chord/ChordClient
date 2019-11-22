@@ -1,11 +1,15 @@
 package org.distributed.systems.chord.actors;
 
 import akka.actor.AbstractActor;
+import akka.actor.ActorRef;
 import akka.actor.ActorSelection;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import com.typesafe.config.Config;
-import org.distributed.systems.chord.messaging.*;
+import org.distributed.systems.chord.messaging.FingerTable;
+import org.distributed.systems.chord.messaging.KeyValue;
+import org.distributed.systems.chord.messaging.NodeJoinMessage;
+import org.distributed.systems.chord.messaging.NodeLeaveMessage;
 import org.distributed.systems.chord.model.ChordNode;
 import org.distributed.systems.chord.service.FingerTableService;
 
@@ -56,24 +60,19 @@ public class Node extends AbstractActor {
 
         return receiveBuilder()
                 .match(NodeJoinMessage.class, nodeJoinMessage -> fingerTableService.addSuccessor(nodeJoinMessage.getNode()))
-                .match(PutValueMessage.class, putValueMessage -> {
-                    String key = putValueMessage.getKey();
-                    Serializable value = putValueMessage.getValue();
-                    log.info("key, value: " + key + " " + value);
+                .match(KeyValue.Put.class, putValueMessage -> {
+                    String key = putValueMessage.key;
+                    Serializable value = putValueMessage.value;
+                    log.info("Put for key, value: " + key + " " + value);
                     valueStore.put(key, value);
                 })
-                .match(GetValueMessage.class, getValueMessage -> {
-                    Serializable val = valueStore.get(getValueMessage.getKey());
-                    log.info("The requested value is: " + val);
-
-                    // TODO tell the actor, the main class isn't an actor though so it won't work
-//                    getContext().getSender().tell(new GetValueResponseMessage(val), ActorRef.noSender());
+                .match(KeyValue.Get.class, getValueMessage -> {
+                    Serializable val = valueStore.get(getValueMessage.key);
+                    getContext().getSender().tell(new KeyValue.Reply(val), ActorRef.noSender());
                 })
-                .match(GetFingerTableMessage.class, getFingerTableMessage -> {
+                .match(FingerTable.Get.class, get -> {
                     List<ChordNode> successors = fingerTableService.chordNodes();
-                    log.info(successors.toString());
-                    // TODO tell the actor, the main class isn't an actor though so it won't work
-//                    getContext().getSender().tell(new FingerTableResponseMessage(successors), ActorRef.noSender());
+                    getContext().getSender().tell(new FingerTable.Reply(successors), ActorRef.noSender());
                 })
                 .match(NodeLeaveMessage.class, nodeLeaveMessage -> {
                     log.info("Node " + nodeLeaveMessage.getNode().getId() + " leaving");
