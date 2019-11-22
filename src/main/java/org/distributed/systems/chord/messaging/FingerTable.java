@@ -1,10 +1,8 @@
 package org.distributed.systems.chord.messaging;
 
 import akka.actor.ActorRef;
-import org.distributed.systems.chord.model.ChordNode;
 
 import java.io.Serializable;
-import java.util.List;
 
 public class FingerTable {
 
@@ -22,7 +20,7 @@ public class FingerTable {
     }
 
 
-    public static class Reply implements Response {
+    public static class Reply implements Response, Serializable {
 
         public final ActorRef successor;
         public final ActorRef predecessor;

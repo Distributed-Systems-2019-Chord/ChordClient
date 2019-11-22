@@ -4,23 +4,19 @@ import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 import akka.actor.Props;
 import org.distributed.systems.chord.actors.Node;
-import org.distributed.systems.chord.messaging.FingerTable;
 import org.distributed.systems.chord.messaging.KeyValue;
-import org.distributed.systems.chord.messaging.NodeJoinMessage;
-import org.distributed.systems.chord.messaging.NodeLeaveMessage;
 import org.distributed.systems.chord.model.ChordNode;
 import org.distributed.systems.chord.util.IHashUtil;
 import org.distributed.systems.chord.util.impl.HashUtil;
 
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 
 import static akka.pattern.Patterns.ask;
 
 public class ChordStart {
 
-    public static final int STANDARD_TIME_OUT = 1000;
+    public static final int STANDARD_TIME_OUT = 5000;
 
     public static void main(String[] args) {
         IHashUtil hashUtil = new HashUtil();

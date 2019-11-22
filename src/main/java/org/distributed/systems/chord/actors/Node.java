@@ -43,21 +43,17 @@ public class Node extends AbstractActor {
 
         if (nodeType.equals("regular")) {
             final String centralEntityAddress = config.getString("myapp.centralEntityAddress");
-            String centralNodeAddress = "akka://ChordNetwork@" + centralEntityAddress + "/user/ChordActor";
+            // FIXME whe shouldn't hardcode this ChordActor ID...
+            String centralNodeAddress = "akka://ChordNetwork@127.0.0.1:25521/user/ChordActor0#-961619862"; //"akka://ChordNetwork@" + centralEntityAddress + "/user/ChordActor";
 
             ActorSelection centralNode = getContext().actorSelection(centralNodeAddress);
-
-//            NodeJoinMessage joinMessage = new NodeJoinMessage(new ChordNode(1));
             log.info(getSelf().path() + " Sending message to: " + centralNodeAddress);
-//            centralNode.tell(joinMessage, getSelf());
-//          TODO get fingertable from central entity
-            fingerTableService.askForFingerTable(centralNode.anchor(),
+
+            fingerTableService.askForFingerTable(centralNode,
                     new FingerTable.Get(
-                        hashUtil.hash(
-                                getSelf().toString()
-                        )));
-//            CompletableFuture<Object> future = getContext().ask(selection,
-//                    new fingerTableActor.getFingerTable(line), 1000).toCompletableFuture();
+                            hashUtil.hash(
+                                    getSelf().toString()
+                            )));
 
         } else if (nodeType.equals("central")) {
             this.fingerTableService.setSuccessor(getSelf());
@@ -92,7 +88,7 @@ public class Node extends AbstractActor {
                 })
                 .match(FingerTable.Get.class, get -> {
 //                    List<ChordNode> successors = fingerTableService.chordNodes();
-                    getContext().getSender().tell(new FingerTable.Reply(fingerTableService.getSuccessor(), fingerTableService.getPredecessor()), ActorRef.noSender());
+                    getSender().tell(new FingerTable.Reply(fingerTableService.getSuccessor(), fingerTableService.getPredecessor()), getSelf());
                 })
                 .match(NodeLeaveMessage.class, nodeLeaveMessage -> {
 //                    log.info("Node " + nodeLeaveMessage.getNode().getId() + " leaving");

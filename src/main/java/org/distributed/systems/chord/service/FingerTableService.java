@@ -1,13 +1,12 @@
 package org.distributed.systems.chord.service;
 
 import akka.actor.ActorRef;
+import akka.actor.ActorSelection;
 import org.distributed.systems.ChordStart;
 import org.distributed.systems.chord.messaging.FingerTable;
-import org.distributed.systems.chord.model.ChordNode;
 
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 
 import static akka.pattern.Patterns.ask;
 
@@ -31,7 +30,7 @@ public class FingerTableService {
         this.predecessor = predecessor;
     }
 
-    public void askForFingerTable(ActorRef node, FingerTable.Get getFingerTable) {
+    public void askForFingerTable(ActorSelection node, FingerTable.Get getFingerTable) {
         // Prepare
         CompletableFuture<Object> fingerTableRequest = ask(node, getFingerTable, Duration.ofMillis(ChordStart.STANDARD_TIME_OUT)).toCompletableFuture();
 
