@@ -40,18 +40,18 @@ public class Node extends AbstractActor {
 
         if (nodeType.equals("regular")) {
             final String centralEntityAddress = config.getString("myapp.centralEntityAddress");
-            String centralNodeAddress = "akka://ChordNetwork@" + centralEntityAddress + "/user/a";
+            String centralNodeAddress = "akka://ChordNetwork@" + centralEntityAddress + "/user/ChordActor";
 
             ActorSelection centralNode = getContext().actorSelection(centralNodeAddress);
 
             NodeJoinMessage joinMessage = new NodeJoinMessage(new ChordNode(1));
-            log.info(joinMessage.getNode().getId() +" Sending message to: " + centralNodeAddress);
+            log.info(getSelf().path() + " Sending message to: " + centralNodeAddress);
             centralNode.tell(joinMessage, getSelf());
 //          TODO get fingertable from central entity
 //            CompletableFuture<Object> future = getContext().ask(selection,
 //                    new fingerTableActor.getFingerTable(line), 1000).toCompletableFuture();
-        } else if(nodeType.equals("central")){
 
+        } else if(nodeType.equals("central")){
             this.predecessor = getSelf();
             this.successor = getSelf();
         }
@@ -63,16 +63,8 @@ public class Node extends AbstractActor {
 
         return receiveBuilder()
                 .match(NodeJoinMessage.class, nodeJoinMessage -> {
-                    log.info("Msg Received from Node " + nodeJoinMessage.getNode().getId());
+                    log.info("Msg Received from Node " + getSender().path());
                     //TODO: fingertable atm is not a finger table. Adjust fingertable l8r when we implement fingertable biz logic.
-                    // if sender is null :
-                    if(getSender().toString().equals("Actor[akka://ChordNetwork/deadLetters]")){
-                        log.info("Sender is null: " + getSender());
-                    } else{
-                        log.info("Sender is not null");
-
-                    }
-
                 })
                 .match(PutValueMessage.class, putValueMessage -> {
                     String key = putValueMessage.getKey();

@@ -13,7 +13,7 @@ import org.distributed.systems.chord.util.impl.HashUtil;
 public class ChordStart {
 
     public static void main(String[] args) {
-        IHashUtil hashUtil = new HashUtil();
+        // IHashUtil hashUtil = new HashUtil();
 
         // Create actor system
         ActorSystem system = ActorSystem.create("ChordNetwork"); // Setup actor system
