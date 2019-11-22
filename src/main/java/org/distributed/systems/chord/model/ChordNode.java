@@ -1,5 +1,7 @@
 package org.distributed.systems.chord.model;
 
+import akka.actor.ActorRef;
+
 public class ChordNode {
 
     private long id;
@@ -11,4 +13,5 @@ public class ChordNode {
     public long getId() {
         return id;
     }
+
 }

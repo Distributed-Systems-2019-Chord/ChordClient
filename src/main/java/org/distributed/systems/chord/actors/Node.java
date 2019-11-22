@@ -6,12 +6,10 @@ import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import com.typesafe.config.Config;
 import org.distributed.systems.chord.messaging.*;
-import org.distributed.systems.chord.model.ChordNode;
 import org.distributed.systems.chord.service.FingerTableService;
 
 import java.io.Serializable;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class Node extends AbstractActor {
@@ -39,10 +37,10 @@ public class Node extends AbstractActor {
             final String centralEntityAddress = config.getString("myapp.centralEntityAddress");
             String centralNodeAddress = "akka://ChordNetwork@" + centralEntityAddress + "/user/a";
             log.info("Sending message to: " + centralNodeAddress);
-            ActorSelection selection = getContext().actorSelection(centralNodeAddress);
+            ActorSelection centralNode = getContext().actorSelection(centralNodeAddress);
 
 //            test call
-            selection.tell("newNode", getSelf());
+            centralNode.tell("newNode", getSelf());
 
 //          TODO get fingertable from central entity
 //            CompletableFuture<Object> future = getContext().ask(selection,
@@ -55,7 +53,12 @@ public class Node extends AbstractActor {
         log.info("Received a message");
 
         return receiveBuilder()
-                .match(NodeJoinMessage.class, nodeJoinMessage -> fingerTableService.addSuccessor(nodeJoinMessage.getNode()))
+                .match(NodeJoinMessage.class, nodeJoinMessage -> {
+                    log.info("Node " + nodeJoinMessage.getNode().getId() + " joining");
+                    //TODO: fingertable atm is not a finger table. Adjust fingertable l8r when we implement fingertable biz logic.
+                    fingerTableService.setSuccessor(getSender());
+
+                })
                 .match(PutValueMessage.class, putValueMessage -> {
                     String key = putValueMessage.getKey();
                     Serializable value = putValueMessage.getValue();
@@ -70,14 +73,14 @@ public class Node extends AbstractActor {
 //                    getContext().getSender().tell(new GetValueResponseMessage(val), ActorRef.noSender());
                 })
                 .match(GetFingerTableMessage.class, getFingerTableMessage -> {
-                    List<ChordNode> successors = fingerTableService.chordNodes();
-                    log.info(successors.toString());
+//                    List<ChordNode> successors = fingerTableService.chordNodes();
+//                    log.info(successors.toString());
                     // TODO tell the actor, the main class isn't an actor though so it won't work
 //                    getContext().getSender().tell(new FingerTableResponseMessage(successors), ActorRef.noSender());
                 })
                 .match(NodeLeaveMessage.class, nodeLeaveMessage -> {
                     log.info("Node " + nodeLeaveMessage.getNode().getId() + " leaving");
-                    fingerTableService.removeSuccessor(nodeLeaveMessage.getNode());
+//                    fingerTableService.removeSuccessor(nodeLeaveMessage.getNode());
                 })
                 .build();
     }

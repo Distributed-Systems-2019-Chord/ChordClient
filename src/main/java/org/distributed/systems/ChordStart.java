@@ -17,9 +17,10 @@ public class ChordStart {
         // Create actor system
         ActorSystem system = ActorSystem.create("ChordNetwork"); // Setup actor system
 
-        // Create start node
-        ChordNode startNode = new ChordNode(0L);
         final ActorRef node = system.actorOf(Props.create(Node.class), "ChordActor0");
+        // Create start node
+
+        ChordNode startNode = new ChordNode(0L);
 
         // Create messages
         NodeJoinMessage joinMessage = new NodeJoinMessage(startNode);

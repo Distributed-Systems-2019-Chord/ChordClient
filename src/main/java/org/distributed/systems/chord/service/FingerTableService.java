@@ -1,37 +1,24 @@
 package org.distributed.systems.chord.service;
 
-import org.distributed.systems.chord.model.ChordNode;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import akka.actor.ActorRef;
 
 public class FingerTableService {
 
-    private final static List<ChordNode> successors = new ArrayList<>();
+    private ActorRef successor;
+    private ActorRef last;
 
-    static {
-//        successors.add(new ChordNode(0L));
+    public ActorRef getSuccessor() {
+        return successor;
     }
 
-    public Optional<ChordNode> getChordNode(long id) {
-        return successors.stream()
-                .filter(node -> node.getId() == id)
-                .findFirst();
+    public void setSuccessor(ActorRef successor) {
+        if(this.last == null){
+            this.last = successor;
+            this.successor = successor;
+        } else{
+
+        }
+
     }
-
-    public void addSuccessor(ChordNode successor) {
-        successors.add(successor);
-    }
-
-
-    public void removeSuccessor(ChordNode successor) {
-        successors.remove(successor);
-    }
-
-    public List<ChordNode> chordNodes() {
-        return successors;
-    }
-
 
 }
