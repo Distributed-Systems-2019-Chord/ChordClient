@@ -12,6 +12,7 @@ import org.distributed.systems.chord.messaging.NodeJoinMessage;
 import org.distributed.systems.chord.messaging.NodeLeaveMessage;
 import org.distributed.systems.chord.model.ChordNode;
 import org.distributed.systems.chord.service.FingerTableService;
+import org.distributed.systems.chord.util.impl.HashUtil;
 
 import java.io.Serializable;
 import java.util.HashMap;
@@ -22,10 +23,9 @@ public class Node extends AbstractActor {
     private final LoggingAdapter log = Logging.getLogger(getContext().getSystem(), this);
 
     private ChordNode chordNode;
-    private ActorRef successor;
-    private ActorRef predecessor;
     private FingerTableService fingerTableService;
     private Map<String, Serializable> valueStore;
+    private HashUtil hashUtil = new HashUtil();
 
     public Node() {
         this.valueStore = new HashMap<>();
@@ -47,16 +47,21 @@ public class Node extends AbstractActor {
 
             ActorSelection centralNode = getContext().actorSelection(centralNodeAddress);
 
-            NodeJoinMessage joinMessage = new NodeJoinMessage(new ChordNode(1));
+//            NodeJoinMessage joinMessage = new NodeJoinMessage(new ChordNode(1));
             log.info(getSelf().path() + " Sending message to: " + centralNodeAddress);
-            centralNode.tell(joinMessage, getSelf());
+//            centralNode.tell(joinMessage, getSelf());
 //          TODO get fingertable from central entity
+            fingerTableService.askForFingerTable(centralNode.anchor(),
+                    new FingerTable.Get(
+                        hashUtil.hash(
+                                getSelf().toString()
+                        )));
 //            CompletableFuture<Object> future = getContext().ask(selection,
 //                    new fingerTableActor.getFingerTable(line), 1000).toCompletableFuture();
 
         } else if (nodeType.equals("central")) {
-            this.predecessor = getSelf();
-            this.successor = getSelf();
+            this.fingerTableService.setSuccessor(getSelf());
+            this.fingerTableService.setPredecessor(getSelf());
         }
     }
 
@@ -68,6 +73,7 @@ public class Node extends AbstractActor {
                 .match(NodeJoinMessage.class, nodeJoinMessage -> {
                     log.info("Msg Received from Node " + getSender().path());
                     //TODO: fingertable atm is not a finger table. Adjust fingertable l8r when we implement fingertable biz logic.
+
                 })
                 .match(KeyValue.Put.class, putValueMessage -> {
                     String key = putValueMessage.key;
@@ -86,7 +92,7 @@ public class Node extends AbstractActor {
                 })
                 .match(FingerTable.Get.class, get -> {
 //                    List<ChordNode> successors = fingerTableService.chordNodes();
-//                    getContext().getSender().tell(new FingerTable.Reply(successors), ActorRef.noSender());
+                    getContext().getSender().tell(new FingerTable.Reply(fingerTableService.getSuccessor(), fingerTableService.getPredecessor()), ActorRef.noSender());
                 })
                 .match(NodeLeaveMessage.class, nodeLeaveMessage -> {
 //                    log.info("Node " + nodeLeaveMessage.getNode().getId() + " leaving");
