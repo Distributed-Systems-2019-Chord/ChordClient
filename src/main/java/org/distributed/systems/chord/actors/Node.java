@@ -1,11 +1,13 @@
 package org.distributed.systems.chord.actors;
 
 import akka.actor.AbstractActor;
+import akka.actor.ActorRef;
 import akka.actor.ActorSelection;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import com.typesafe.config.Config;
 import org.distributed.systems.chord.messaging.*;
+import org.distributed.systems.chord.model.ChordNode;
 import org.distributed.systems.chord.service.FingerTableService;
 
 import java.io.Serializable;
@@ -16,6 +18,9 @@ public class Node extends AbstractActor {
 
     private final LoggingAdapter log = Logging.getLogger(getContext().getSystem(), this);
 
+    private ChordNode chordNode;
+    private ActorRef successor;
+    private ActorRef predecessor;
     private FingerTableService fingerTableService;
     private Map<String, Serializable> valueStore;
 
@@ -36,27 +41,37 @@ public class Node extends AbstractActor {
         if (nodeType.equals("regular")) {
             final String centralEntityAddress = config.getString("myapp.centralEntityAddress");
             String centralNodeAddress = "akka://ChordNetwork@" + centralEntityAddress + "/user/a";
-            log.info("Sending message to: " + centralNodeAddress);
+
             ActorSelection centralNode = getContext().actorSelection(centralNodeAddress);
 
-//            test call
-            centralNode.tell("newNode", getSelf());
-
+            NodeJoinMessage joinMessage = new NodeJoinMessage(new ChordNode(1));
+            log.info(joinMessage.getNode().getId() +" Sending message to: " + centralNodeAddress);
+            centralNode.tell(joinMessage, getSelf());
 //          TODO get fingertable from central entity
 //            CompletableFuture<Object> future = getContext().ask(selection,
 //                    new fingerTableActor.getFingerTable(line), 1000).toCompletableFuture();
+        } else if(nodeType.equals("central")){
+
+            this.predecessor = getSelf();
+            this.successor = getSelf();
         }
     }
 
     @Override
     public Receive createReceive() {
-        log.info("Received a message");
+//        log.info("Received a message");
 
         return receiveBuilder()
                 .match(NodeJoinMessage.class, nodeJoinMessage -> {
-                    log.info("Node " + nodeJoinMessage.getNode().getId() + " joining");
+                    log.info("Msg Received from Node " + nodeJoinMessage.getNode().getId());
                     //TODO: fingertable atm is not a finger table. Adjust fingertable l8r when we implement fingertable biz logic.
-                    fingerTableService.setSuccessor(getSender());
+                    // if sender is null :
+                    if(getSender().toString().equals("Actor[akka://ChordNetwork/deadLetters]")){
+                        log.info("Sender is null: " + getSender());
+                    } else{
+                        log.info("Sender is not null");
+
+                    }
 
                 })
                 .match(PutValueMessage.class, putValueMessage -> {

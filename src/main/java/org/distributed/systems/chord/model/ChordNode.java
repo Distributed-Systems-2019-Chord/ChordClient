@@ -2,7 +2,9 @@ package org.distributed.systems.chord.model;
 
 import akka.actor.ActorRef;
 
-public class ChordNode {
+import java.io.Serializable;
+
+public class ChordNode implements Serializable {
 
     private long id;
 
