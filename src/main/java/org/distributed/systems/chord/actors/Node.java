@@ -33,9 +33,8 @@ public class Node extends AbstractActor {
 
     public Node() {
         fingerTableService = new FingerTableService();
-        this.storageService = new StorageService();
+        this.storageService = StorageService.getInstance();
         this.manager = Tcp.get(getContext().getSystem()).manager();
-        ;
     }
 
     public static Props props(ActorRef manager) {
