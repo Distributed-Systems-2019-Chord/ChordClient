@@ -30,7 +30,7 @@ class MemCachedHandler extends AbstractActor {
                             // Process each line that is passed:
                             String[] lines = request.split("\r\n");
                             System.out.println(Arrays.toString(lines));
-                            
+
                             // Dummy handler
                             for (String line : lines) {
                                 if (line.startsWith("get")) {
@@ -45,7 +45,6 @@ class MemCachedHandler extends AbstractActor {
                                     getSender().tell(TcpMessage.write(getresp), getSelf());
                                     getSender().tell(TcpMessage.write(getdataresp), getSelf());
                                 } else if (line.startsWith("set")) {
-                                    // TODO: get payload
                                     ByteString resp = ByteString.fromString("\r\n");
                                     getSender().tell(TcpMessage.write(resp), getSelf());
                                 } else {
@@ -60,7 +59,7 @@ class MemCachedHandler extends AbstractActor {
 
                             ByteString end = ByteString.fromString("END\r\n");
                             getSender().tell(TcpMessage.write(end), getSelf());
-                            System.out.println(" Handeled Req");
+                            System.out.println("Handled A MemCache Request");
 
                         })
                 .match(
