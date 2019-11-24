@@ -12,6 +12,7 @@ import org.distributed.systems.chord.messaging.NodeJoinMessage;
 import org.distributed.systems.chord.messaging.NodeLeaveMessage;
 import org.distributed.systems.chord.model.ChordNode;
 import org.distributed.systems.chord.service.FingerTableService;
+import org.distributed.systems.chord.service.StorageService;
 
 import java.io.Serializable;
 import java.util.HashMap;
@@ -23,11 +24,11 @@ public class Node extends AbstractActor {
     private final LoggingAdapter log = Logging.getLogger(getContext().getSystem(), this);
 
     private FingerTableService fingerTableService;
-    private Map<String, Serializable> valueStore;
+    private StorageService storageService;
 
     public Node() {
-        this.valueStore = new HashMap<>();
         fingerTableService = new FingerTableService();
+        this.storageService = new StorageService();
     }
 
     @Override
@@ -64,10 +65,10 @@ public class Node extends AbstractActor {
                     String key = putValueMessage.key;
                     Serializable value = putValueMessage.value;
                     log.info("Put for key, value: " + key + " " + value);
-                    valueStore.put(key, value);
+                    this.storageService.put(key, value);
                 })
                 .match(KeyValue.Get.class, getValueMessage -> {
-                    Serializable val = valueStore.get(getValueMessage.key);
+                    Serializable val = this.storageService.get(getValueMessage.key);
                     getContext().getSender().tell(new KeyValue.Reply(val), ActorRef.noSender());
                 })
                 .match(FingerTable.Get.class, get -> {
