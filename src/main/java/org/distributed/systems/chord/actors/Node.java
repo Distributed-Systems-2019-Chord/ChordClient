@@ -50,9 +50,7 @@ public class Node extends AbstractActor {
         final String nodeType = config.getString("myapp.nodeType");
         log.info("DEBUG -- nodetype: " + nodeType);
 
-        // add tcp interface
-        final ActorRef tcp = Tcp.get(getContext().getSystem()).manager();
-        tcp.tell(TcpMessage.bind(getSelf(), new InetSocketAddress("localhost", 9000), 100), getSelf());
+        this.createMemCacheTCPSocket();
 
         if (nodeType.equals("regular")) {
             final String centralEntityAddress = config.getString("myapp.centralEntityAddress");
@@ -75,12 +73,16 @@ public class Node extends AbstractActor {
 
         return receiveBuilder()
                 .match(Tcp.Bound.class, msg -> {
+                    // This will be called, when the SystemActor bound MemCache interface for the particular node.
                     manager.tell(msg, getSelf());
+                    System.out.printf("MemCache Interface for node %s listening to %s \n", getSelf().toString(), msg.localAddress().toString());
                 })
                 .match(CommandFailed.class, msg -> {
                     getContext().stop(getSelf());
+                    System.out.println("Command failed");
                 })
                 .match(Connected.class, conn -> {
+                    System.out.println("MemCache Client connected");
                     manager.tell(conn, getSelf());
                     final ActorRef handler =
                             getContext().actorOf(Props.create(MemCachedHandler.class));
@@ -112,6 +114,15 @@ public class Node extends AbstractActor {
     public void postStop() throws Exception {
         super.postStop();
         log.info("Shutting down...");
+    }
+
+    private void createMemCacheTCPSocket() {
+        final ActorRef tcp = Tcp.get(getContext().getSystem()).manager();
+        // Open Socket Address on localhost and random port.
+        // TODO: We need to expose this port to the outer world
+        InetSocketAddress tcp_socked = new InetSocketAddress("localhost", 0);
+        Tcp.Command tcpmsg = TcpMessage.bind(getSelf(), tcp_socked, 100);
+        tcp.tell(tcpmsg, getSelf());
     }
 
 }
