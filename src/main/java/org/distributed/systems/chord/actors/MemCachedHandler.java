@@ -4,10 +4,20 @@ import akka.actor.AbstractActor;
 import akka.io.Tcp;
 import akka.io.TcpMessage;
 import akka.util.ByteString;
+import org.distributed.systems.chord.service.StorageService;
 
+import java.io.Serializable;
 import java.util.Arrays;
 
 class MemCachedHandler extends AbstractActor {
+
+    private StorageService storageService;
+    private String previous = "";
+
+    public MemCachedHandler() {
+        this.storageService = StorageService.getInstance();
+    }
+
     @Override
     public Receive createReceive() {
         return receiveBuilder()
@@ -20,14 +30,18 @@ class MemCachedHandler extends AbstractActor {
                             // Process each line that is passed:
                             String[] lines = request.split("\r\n");
                             System.out.println(Arrays.toString(lines));
-
-                            String previous = "";
+                            
                             // Dummy handler
                             for (String line : lines) {
                                 if (line.startsWith("get")) {
-                                    ByteString getdataresp = ByteString.fromString("PAYLOAD\r\n");
+                                    String[] get_options = line.split(" ");
+                                    String key = get_options[1];
+                                    Serializable payload = this.storageService.get(key);
+                                    Integer payload_length = payload.toString().length();
+                                    ByteString getdataresp = ByteString.fromString(payload.toString() + "\r\n");
                                     // 99 is unique id
-                                    ByteString getresp = ByteString.fromString("VALUE  key " + (getdataresp.length() - 2) + " 99\r\n");
+                                    ByteString getresp = ByteString.fromString("VALUE " + key + "  " + (payload_length) + " 99\r\n");
+
                                     getSender().tell(TcpMessage.write(getresp), getSelf());
                                     getSender().tell(TcpMessage.write(getdataresp), getSelf());
                                 } else if (line.startsWith("set")) {
@@ -35,6 +49,10 @@ class MemCachedHandler extends AbstractActor {
                                     ByteString resp = ByteString.fromString("\r\n");
                                     getSender().tell(TcpMessage.write(resp), getSelf());
                                 } else {
+                                    if (previous.startsWith("set")) {
+                                        String[] set_options = previous.split(" ");
+                                        this.storageService.put(set_options[1], line);
+                                    }
                                     // parse other
                                 }
                                 previous = line;
