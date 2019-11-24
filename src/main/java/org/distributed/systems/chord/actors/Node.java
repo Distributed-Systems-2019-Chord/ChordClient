@@ -3,8 +3,13 @@ package org.distributed.systems.chord.actors;
 import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
 import akka.actor.ActorSelection;
+import akka.actor.Props;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
+import akka.io.Tcp;
+import akka.io.Tcp.CommandFailed;
+import akka.io.Tcp.Connected;
+import akka.io.TcpMessage;
 import com.typesafe.config.Config;
 import org.distributed.systems.chord.messaging.FingerTable;
 import org.distributed.systems.chord.messaging.KeyValue;
@@ -15,13 +20,13 @@ import org.distributed.systems.chord.service.FingerTableService;
 import org.distributed.systems.chord.service.StorageService;
 
 import java.io.Serializable;
-import java.util.HashMap;
+import java.net.InetSocketAddress;
 import java.util.List;
-import java.util.Map;
 
 public class Node extends AbstractActor {
 
     private final LoggingAdapter log = Logging.getLogger(getContext().getSystem(), this);
+    final ActorRef manager;
 
     private FingerTableService fingerTableService;
     private StorageService storageService;
@@ -29,6 +34,12 @@ public class Node extends AbstractActor {
     public Node() {
         fingerTableService = new FingerTableService();
         this.storageService = new StorageService();
+        this.manager = Tcp.get(getContext().getSystem()).manager();
+        ;
+    }
+
+    public static Props props(ActorRef manager) {
+        return Props.create(Node.class, manager);
     }
 
     @Override
@@ -39,6 +50,10 @@ public class Node extends AbstractActor {
         Config config = getContext().getSystem().settings().config();
         final String nodeType = config.getString("myapp.nodeType");
         log.info("DEBUG -- nodetype: " + nodeType);
+
+        // add tcp interface
+        final ActorRef tcp = Tcp.get(getContext().getSystem()).manager();
+        tcp.tell(TcpMessage.bind(getSelf(), new InetSocketAddress("localhost", 9000), 100), getSelf());
 
         if (nodeType.equals("regular")) {
             final String centralEntityAddress = config.getString("myapp.centralEntityAddress");
@@ -60,6 +75,18 @@ public class Node extends AbstractActor {
         log.info("Received a message");
 
         return receiveBuilder()
+                .match(Tcp.Bound.class, msg -> {
+                    manager.tell(msg, getSelf());
+                })
+                .match(CommandFailed.class, msg -> {
+                    getContext().stop(getSelf());
+                })
+                .match(Connected.class, conn -> {
+                    manager.tell(conn, getSelf());
+                    final ActorRef handler =
+                            getContext().actorOf(Props.create(MemCachedHandler.class));
+                    getSender().tell(TcpMessage.register(handler), getSelf());
+                })
                 .match(NodeJoinMessage.class, nodeJoinMessage -> fingerTableService.addSuccessor(nodeJoinMessage.getNode()))
                 .match(KeyValue.Put.class, putValueMessage -> {
                     String key = putValueMessage.key;
