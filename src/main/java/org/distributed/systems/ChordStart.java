@@ -3,6 +3,7 @@ package org.distributed.systems;
 import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 import akka.actor.Props;
+import com.typesafe.config.Config;
 import org.distributed.systems.chord.actors.Node;
 import org.distributed.systems.chord.messaging.KeyValue;
 import org.distributed.systems.chord.model.ChordNode;
@@ -26,7 +27,17 @@ public class ChordStart {
 
         // Create start node
         ChordNode startNode = new ChordNode(0L);
-        final ActorRef node = system.actorOf(Props.create(Node.class), "ChordActor0");
+
+        Config config = system.settings().config();
+        final String nodeType = config.getString("myapp.nodeType");
+
+        if (nodeType.equals("central")) {
+            final ActorRef node = system.actorOf(Props.create(Node.class), "ChordActor0");
+        }
+        else {
+            final ActorRef node = system.actorOf(Props.create(Node.class));
+        }
+
 
 //        String hashId = hashUtil.hash(String.valueOf(startNode.getId()));
 //        String hashKey = hashUtil.hash(String.valueOf(startNode.getId()));

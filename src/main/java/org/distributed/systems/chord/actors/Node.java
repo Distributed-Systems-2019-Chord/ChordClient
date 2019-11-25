@@ -43,9 +43,8 @@ public class Node extends AbstractActor {
 
         if (nodeType.equals("regular")) {
             final String centralEntityAddress = config.getString("myapp.centralEntityAddress");
-            // FIXME whe shouldn't hardcode this ChordActor ID...
-            String centralNodeAddress = "akka://ChordNetwork@127.0.0.1:25521/user/ChordActor0#-961619862"; //"akka://ChordNetwork@" + centralEntityAddress + "/user/ChordActor";
-
+            String centralNodeAddress = "akka://ChordNetwork@" + centralEntityAddress + "/user/ChordActor0";
+            //"akka://ChordNetwork@127.0.0.1:25521/user/ChordActor0"; //
             ActorSelection centralNode = getContext().actorSelection(centralNodeAddress);
             log.info(getSelf().path() + " Sending message to: " + centralNodeAddress);
 
@@ -87,6 +86,7 @@ public class Node extends AbstractActor {
                     getContext().getSender().tell(new KeyValue.Reply(val), ActorRef.noSender());
                 })
                 .match(FingerTable.Get.class, get -> {
+                    log.info("send figner table to new node");
 //                    List<ChordNode> successors = fingerTableService.chordNodes();
                     getSender().tell(new FingerTable.Reply(fingerTableService.getSuccessor(), fingerTableService.getPredecessor()), getSelf());
                 })
