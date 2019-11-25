@@ -17,6 +17,8 @@ import static akka.pattern.Patterns.ask;
 public class ChordStart {
 
     public static final int STANDARD_TIME_OUT = 5000;
+    public static final long m = 3; // Number of bits in key id's
+    public static final long AMOUNT_OF_KEYS = Math.round(Math.pow(2, m)); //TODO 2 ^ 32;
 
     public static void main(String[] args) {
         IHashUtil hashUtil = new HashUtil();
@@ -25,7 +27,7 @@ public class ChordStart {
         ActorSystem system = ActorSystem.create("ChordNetwork"); // Setup actor system
 
         // Create start node
-        ChordNode startNode = new ChordNode(0L);
+        ChordNode startNode = new ChordNode(1L, "127.0.0.1", 2551);
         final ActorRef node = system.actorOf(Props.create(Node.class), "ChordActor0");
 
 //        String hashId = hashUtil.hash(String.valueOf(startNode.getId()));

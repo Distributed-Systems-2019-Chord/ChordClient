@@ -8,13 +8,13 @@ public class FingerTable {
 
     public static class Get implements Command, Serializable {
 
-        private String hash;
+        private long hash;
 
-        public Get(String hash) {
+        public Get(long hash) {
             this.hash = hash;
         }
 
-        public String getHash() {
+        public long getHash() {
             return hash;
         }
     }

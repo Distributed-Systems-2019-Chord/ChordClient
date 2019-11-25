@@ -11,7 +11,9 @@ import org.distributed.systems.chord.messaging.KeyValue;
 import org.distributed.systems.chord.messaging.NodeJoinMessage;
 import org.distributed.systems.chord.messaging.NodeLeaveMessage;
 import org.distributed.systems.chord.model.ChordNode;
+import org.distributed.systems.chord.repository.FingerRepository;
 import org.distributed.systems.chord.service.FingerTableService;
+import org.distributed.systems.chord.util.Util;
 import org.distributed.systems.chord.util.impl.HashUtil;
 
 import java.io.Serializable;
@@ -44,20 +46,21 @@ public class Node extends AbstractActor {
         if (nodeType.equals("regular")) {
             final String centralEntityAddress = config.getString("myapp.centralEntityAddress");
             // FIXME whe shouldn't hardcode this ChordActor ID...
-            String centralNodeAddress = "akka://ChordNetwork@127.0.0.1:25521/user/ChordActor0#-961619862"; //"akka://ChordNetwork@" + centralEntityAddress + "/user/ChordActor";
+            String centralNodeAddress = "akka://ChordNetwork@127.0.0.1:25521/user/ChordActor0#-25918211"; //"akka://ChordNetwork@" + centralEntityAddress + "/user/ChordActor";
 
             ActorSelection centralNode = getContext().actorSelection(centralNodeAddress);
             log.info(getSelf().path() + " Sending message to: " + centralNodeAddress);
 
-            fingerTableService.askForFingerTable(centralNode,
+            FingerRepository.askForFingerTable(centralNode,
                     new FingerTable.Get(
                             hashUtil.hash(
                                     getSelf().toString()
                             )));
 
         } else if (nodeType.equals("central")) {
-            this.fingerTableService.setSuccessor(getSelf());
-            this.fingerTableService.setPredecessor(getSelf());
+            ChordNode central = new ChordNode(0L, Util.getIp(config), Util.getPort(config));
+            this.fingerTableService.setSuccessor(central);
+            this.fingerTableService.setPredecessor(central);
         }
     }
 
@@ -88,7 +91,11 @@ public class Node extends AbstractActor {
                 })
                 .match(FingerTable.Get.class, get -> {
 //                    List<ChordNode> successors = fingerTableService.chordNodes();
-                    getSender().tell(new FingerTable.Reply(fingerTableService.getSuccessor(), fingerTableService.getPredecessor()), getSelf());
+                    getSender().tell(new FingerTable.Reply(
+                                    Util.getActorRef(getContext(), fingerTableService.getSuccessor()).anchor(),
+                                    Util.getActorRef(getContext(), fingerTableService.getPredecessor()).anchor()),
+                            getSelf()
+                    );
                 })
                 .match(NodeLeaveMessage.class, nodeLeaveMessage -> {
 //                    log.info("Node " + nodeLeaveMessage.getNode().getId() + " leaving");
