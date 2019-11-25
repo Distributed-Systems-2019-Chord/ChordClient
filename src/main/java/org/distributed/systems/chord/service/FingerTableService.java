@@ -28,18 +28,19 @@ public class FingerTableService {
 
     public FingerTable initFingerTable(ChordNode node) {
         FingerTable table = new FingerTable(new ArrayList<>((int) ChordStart.m), 0);
-        for (int i = 0; i < ChordStart.m; i++) {
+        for (int i = 1; i <= ChordStart.m; i++) {
             long startFinger = startFinger(node.getId(), i);
-            FingerInterval interval = calcInterval((int) startFinger);
+            long endFinger = startFinger(node.getId(), i + 1);
+            FingerInterval interval = calcInterval((int) startFinger, (int) endFinger);
             table.addFinger(new Finger(startFinger, interval, calcSuccessor()));
         }
         return table;
     }
 
 
-    public FingerInterval calcInterval(int fingerTableIndex) {
-        int startIndex = (int) (fingerTableIndex % ChordStart.AMOUNT_OF_KEYS);
-        int endIndex = (int) (fingerTableIndex + 1 % ChordStart.AMOUNT_OF_KEYS);
+    public FingerInterval calcInterval(int start1, int start2) {
+        int startIndex = (int) (start1 % ChordStart.AMOUNT_OF_KEYS);
+        int endIndex = (int) (start2 % ChordStart.AMOUNT_OF_KEYS);
 
 //        long beginInterval = table.getFingerList().get(startIndex).getStart();
 //        long endInterval = table.getFingerList().get(endIndex).getStart();
