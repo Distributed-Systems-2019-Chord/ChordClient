@@ -1,19 +1,30 @@
 package org.distributed.systems.chord.model;
 
-import akka.actor.ActorRef;
-
 import java.io.Serializable;
 
 public class ChordNode implements Serializable {
 
     private long id;
 
-    public ChordNode(long id) {
+    private String ip;
+
+    private int port;
+
+    public ChordNode(long id, String ip, int port) {
         this.id = id;
+        this.ip = ip;
+        this.port = port;
     }
 
     public long getId() {
         return id;
     }
 
+    public String getIp() {
+        return ip;
+    }
+
+    public int getPort() {
+        return port;
+    }
 }
