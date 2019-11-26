@@ -6,28 +6,32 @@ import akka.actor.ActorSelection;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import com.typesafe.config.Config;
+import org.distributed.systems.ChordStart;
 import org.distributed.systems.chord.messaging.FingerTable;
 import org.distributed.systems.chord.messaging.KeyValue;
 import org.distributed.systems.chord.messaging.NodeJoinMessage;
 import org.distributed.systems.chord.messaging.NodeLeaveMessage;
 import org.distributed.systems.chord.model.ChordNode;
 import org.distributed.systems.chord.repository.FingerRepository;
+import org.distributed.systems.chord.repository.NodeRepository;
 import org.distributed.systems.chord.service.FingerTableService;
 import org.distributed.systems.chord.util.Util;
 import org.distributed.systems.chord.util.impl.HashUtil;
 
 import java.io.Serializable;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class Node extends AbstractActor {
 
     private final LoggingAdapter log = Logging.getLogger(getContext().getSystem(), this);
 
-    private ChordNode chordNode;
     private FingerTableService fingerTableService;
     private Map<String, Serializable> valueStore;
     private HashUtil hashUtil = new HashUtil();
+    private NodeRepository nodeRepository = new NodeRepository();
 
     public Node() {
         this.valueStore = new HashMap<>();
@@ -51,16 +55,12 @@ public class Node extends AbstractActor {
             ActorSelection centralNode = getContext().actorSelection(centralNodeAddress);
             log.info(getSelf().path() + " Sending message to: " + centralNodeAddress);
 
-            FingerRepository.askForFingerTable(centralNode,
-                    new FingerTable.Get(
-                            hashUtil.hash(
-                                    getSelf().toString()
-                            )));
+            FingerRepository.askForFingerTable(centralNode, new FingerTable.Get(hashUtil.hash(getSelf().toString())), fingerTableService);
 
         } else if (nodeType.equals("central")) {
-            ChordNode central = new ChordNode(0L, Util.getIp(config), Util.getPort(config));
-            this.fingerTableService.setSuccessor(central);
-            this.fingerTableService.setPredecessor(central);
+            ChordNode central = new ChordNode(hashUtil.hash(Util.getIp(config)), Util.getIp(config), Util.getPort(config));
+            fingerTableService.setFingerTable(fingerTableService.initFingerTableCentral(central));
+            fingerTableService.setPredecessor(central);
         }
     }
 
@@ -111,4 +111,28 @@ public class Node extends AbstractActor {
         log.info("Shutting down...");
     }
 
+    public ChordNode findSuccessor(long id) {
+        // send message
+        return null;
+    }
+
+    public ChordNode findPredecessor(long id) {
+        return null;
+    }
+
+    private ChordNode closestPreceedingFinger(long id) {
+        for (int i = ChordStart.m; i > 0; i--) {
+            List<Long> idsInFingerTable = fingerTableService
+                    .getFingers().stream()
+                    .map(finger -> finger.getSucc().getId())
+                    .collect(Collectors.toList());
+            if (idsInFingerTable.contains(id)) {
+                //              return
+
+            }
+        }
+        ChordNode pred = fingerTableService.getPredecessor();
+        ActorSelection selectedNode = Util.getActorRef(getContext(), pred);
+        return nodeRepository.askForSuccessor(selectedNode); // predecessor.successor
+    }
 }

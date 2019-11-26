@@ -8,11 +8,11 @@ import org.distributed.systems.chord.model.ChordNode;
 public class Util {
 
     public static String getIp(Config conf) {
-        return conf.getString("myapp.ip");
+        return conf.getString("akka.remote.artery.canonical.hostname");
     }
 
     public static int getPort(Config conf) {
-        return conf.getInt("port");
+        return conf.getInt("akka.remote.artery.canonical.port");
     }
 
     public static ActorSelection getActorRef(ActorContext context, ChordNode node) {

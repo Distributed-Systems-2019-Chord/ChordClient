@@ -9,6 +9,7 @@ import org.distributed.systems.chord.util.IHashUtil;
 import org.distributed.systems.chord.util.impl.HashUtil;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class FingerTableService {
 
@@ -26,18 +27,36 @@ public class FingerTableService {
         return (long) ((nodeId + Math.pow(2, (fingerTableIndex - 1))) % ChordStart.AMOUNT_OF_KEYS);
     }
 
+    public void setFingerTable(FingerTable fingerTable) {
+        this.fingerTable = fingerTable;
+    }
 
     public ChordNode calcSuccessor() {
         return new ChordNode(hashUtil.hash("SomeRandomValue"));
     }
 
+    public void handleFingerTableMessage(org.distributed.systems.chord.messaging.FingerTable.Reply getFingerTableMessage) {
+        //TODO
+    }
+
     public FingerTable initFingerTable(ChordNode node) {
-        FingerTable table = new FingerTable(new ArrayList<>((int) ChordStart.m), 0);
+        FingerTable table = new FingerTable(new ArrayList<>(ChordStart.m), 0);
         for (int i = 1; i <= ChordStart.m; i++) {
             long startFinger = startFinger(node.getId(), i);
             long endFinger = startFinger(node.getId(), i + 1);
             FingerInterval interval = calcInterval(startFinger, endFinger);
             table.addFinger(new Finger(startFinger, interval, calcSuccessor()));
+        }
+        return table;
+    }
+
+    public FingerTable initFingerTableCentral(ChordNode centralNode) {
+        FingerTable table = new FingerTable(new ArrayList<>(ChordStart.m), 0);
+        for (int i = 1; i <= ChordStart.m; i++) {
+            long startFinger = startFinger(centralNode.getId(), i);
+            long endFinger = startFinger(centralNode.getId(), i + 1);
+            FingerInterval interval = calcInterval(startFinger, endFinger);
+            table.addFinger(new Finger(startFinger, interval, centralNode));
         }
         return table;
     }
@@ -48,6 +67,10 @@ public class FingerTableService {
         long endIndex = start2 % ChordStart.AMOUNT_OF_KEYS;
 
         return new FingerInterval(startIndex, endIndex);
+    }
+
+    public List<Finger> getFingers() {
+        return this.fingerTable.getFingerList();
     }
 
     public ChordNode findPredecessor() {
@@ -85,7 +108,7 @@ public class FingerTableService {
 //              return
 //        }
 
-        return predecessor; // predecessor.successor
+        return predecessor; //predecessor.successor
     }
 
 }

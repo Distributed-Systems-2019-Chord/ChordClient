@@ -12,8 +12,10 @@ public class ChordStart {
 
     public static final int STANDARD_TIME_OUT = 5000;
     // FIXME 160 according to sha-1 but this is the max_length of a java long..
-    public static final long m = 16; // Number of bits in key id's
+    public static final int m = 16; // Number of bits in key id's
     public static final long AMOUNT_OF_KEYS = Math.round(Math.pow(2, m));
+
+    private static ActorRef node;
 
     public static void main(String[] args) {
         IHashUtil hashUtil = new HashUtil();
@@ -30,9 +32,9 @@ public class ChordStart {
         final String nodeType = config.getString("myapp.nodeType");
 
         if (nodeType.equals("central")) {
-            final ActorRef node = system.actorOf(Props.create(Node.class), "ChordActor0");
+            node = system.actorOf(Props.create(Node.class), "ChordActor0");
         } else {
-            final ActorRef node = system.actorOf(Props.create(Node.class));
+            node = system.actorOf(Props.create(Node.class));
         }
 
 
