@@ -11,6 +11,7 @@ public class Finger {
     private ChordNode succ; // node ref
 
     public Finger(long start, FingerInterval interval, ChordNode succ) {
+//        index missing?
         this.start = start;
         this.interval = interval;
         this.succ = succ;
