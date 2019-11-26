@@ -6,14 +6,9 @@ import java.util.Map;
 
 public class StorageService {
 
-    private static final StorageService instance = new StorageService();
     private Map<String, Serializable> valueStore;
 
-    public static StorageService getInstance() {
-        return instance;
-    }
-
-    private StorageService() {
+    public StorageService() {
         this.valueStore = new HashMap<>();
     }
 

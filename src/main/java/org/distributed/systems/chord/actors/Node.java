@@ -29,12 +29,13 @@ public class Node extends AbstractActor {
     final ActorRef manager;
 
     private FingerTableService fingerTableService;
-    private StorageService storageService;
+    private ActorRef storageActorRef;
 
     public Node() {
         fingerTableService = new FingerTableService();
-        this.storageService = StorageService.getInstance();
         this.manager = Tcp.get(getContext().getSystem()).manager();
+        this.storageActorRef = getContext().actorOf(Props.create(StorageActor.class));
+
     }
 
     public static Props props(ActorRef manager) {
@@ -84,20 +85,14 @@ public class Node extends AbstractActor {
                 .match(Connected.class, conn -> {
                     System.out.println("MemCache Client connected");
                     manager.tell(conn, getSelf());
-                    final ActorRef handler =
-                            getContext().actorOf(Props.create(MemCachedHandler.class));
-                    getSender().tell(TcpMessage.register(handler), getSelf());
+                    getSender().tell(TcpMessage.register(this.storageActorRef), getSelf());
                 })
                 .match(NodeJoinMessage.class, nodeJoinMessage -> fingerTableService.addSuccessor(nodeJoinMessage.getNode()))
                 .match(KeyValue.Put.class, putValueMessage -> {
-                    String key = putValueMessage.key;
-                    Serializable value = putValueMessage.value;
-                    log.info("Put for key, value: " + key + " " + value);
-                    this.storageService.put(key, value);
+                    this.storageActorRef.forward(putValueMessage, getContext());
                 })
                 .match(KeyValue.Get.class, getValueMessage -> {
-                    Serializable val = this.storageService.get(getValueMessage.key);
-                    getContext().getSender().tell(new KeyValue.Reply(val), ActorRef.noSender());
+                    this.storageActorRef.forward(getValueMessage, getContext());
                 })
                 .match(FingerTable.Get.class, get -> {
                     List<ChordNode> successors = fingerTableService.chordNodes();
