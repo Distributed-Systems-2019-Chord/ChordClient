@@ -26,6 +26,8 @@ import java.util.List;
 public class Node extends AbstractActor {
 
     private final LoggingAdapter log = Logging.getLogger(getContext().getSystem(), this);
+    static final int MEMCACHE_MIN_PORT = 11211;
+    static final int MEMCACHE_MAX_PORT = 12235;
     final ActorRef manager;
 
     private FingerTableService fingerTableService;
@@ -79,8 +81,18 @@ public class Node extends AbstractActor {
                     System.out.printf("MemCache Interface for node %s listening to %s \n", getSelf().toString(), msg.localAddress().toString());
                 })
                 .match(CommandFailed.class, msg -> {
-                    getContext().stop(getSelf());
                     System.out.println("Command failed");
+                    if (msg.cmd() instanceof Tcp.Bind) {
+                        int triedPort = ((Tcp.Bind) msg.cmd()).localAddress().getPort();
+                        if (triedPort <= Node.MEMCACHE_MAX_PORT) {
+                            System.out.println("Port Binding Failed; Retrying...");
+                            createMemCacheTCPSocket(triedPort + 1);
+                        } else {
+                            System.out.println("Port Binding Failed; Ports for Memcache Interface exhausted");
+                            System.out.println("Shutting down...");
+                            getContext().stop(getSelf());
+                        }
+                    }
                 })
                 .match(Connected.class, conn -> {
                     System.out.println("MemCache Client connected");
@@ -112,10 +124,15 @@ public class Node extends AbstractActor {
     }
 
     private void createMemCacheTCPSocket() {
+        createMemCacheTCPSocket(Node.MEMCACHE_MIN_PORT);
+        // TODO: Environment Var Control?
+    }
+
+    private void createMemCacheTCPSocket(int port) {
+
         final ActorRef tcp = Tcp.get(getContext().getSystem()).manager();
-        // Open Socket Address on localhost and random port.
         // TODO: We need to expose this port to the outer world
-        InetSocketAddress tcp_socked = new InetSocketAddress("localhost", 0);
+        InetSocketAddress tcp_socked = new InetSocketAddress("localhost", port);
         Tcp.Command tcpmsg = TcpMessage.bind(getSelf(), tcp_socked, 100);
         tcp.tell(tcpmsg, getSelf());
     }
