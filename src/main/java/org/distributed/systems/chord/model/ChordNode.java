@@ -16,6 +16,10 @@ public class ChordNode implements Serializable {
         this.port = port;
     }
 
+    public ChordNode(long id) {
+        this.id = id;
+    }
+
     public long getId() {
         return id;
     }

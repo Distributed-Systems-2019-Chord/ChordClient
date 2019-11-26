@@ -5,21 +5,15 @@ import akka.actor.ActorSystem;
 import akka.actor.Props;
 import com.typesafe.config.Config;
 import org.distributed.systems.chord.actors.Node;
-import org.distributed.systems.chord.messaging.KeyValue;
-import org.distributed.systems.chord.model.ChordNode;
 import org.distributed.systems.chord.util.IHashUtil;
 import org.distributed.systems.chord.util.impl.HashUtil;
-
-import java.time.Duration;
-import java.util.concurrent.CompletableFuture;
-
-import static akka.pattern.Patterns.ask;
 
 public class ChordStart {
 
     public static final int STANDARD_TIME_OUT = 5000;
-    public static final long m = 3; // Number of bits in key id's
-    public static final long AMOUNT_OF_KEYS = Math.round(Math.pow(2, m)); //TODO 2 ^ 32;
+    // FIXME 160 according to sha-1 but this is the max_length of a java long..
+    public static final long m = 16; // Number of bits in key id's
+    public static final long AMOUNT_OF_KEYS = Math.round(Math.pow(2, m));
 
     public static void main(String[] args) {
         IHashUtil hashUtil = new HashUtil();
@@ -28,7 +22,7 @@ public class ChordStart {
         ActorSystem system = ActorSystem.create("ChordNetwork"); // Setup actor system
 
         // Create start node
-        ChordNode startNode = new ChordNode(0L);
+//        ChordNode startNode = new ChordNode(0L);
         //ChordNode startNode = new ChordNode(1L, "127.0.0.1", 2551);
 
 
@@ -37,8 +31,7 @@ public class ChordStart {
 
         if (nodeType.equals("central")) {
             final ActorRef node = system.actorOf(Props.create(Node.class), "ChordActor0");
-        }
-        else {
+        } else {
             final ActorRef node = system.actorOf(Props.create(Node.class));
         }
 
@@ -72,24 +65,5 @@ public class ChordStart {
 //        system.stop(node); // Quit node
 
 //        system.terminate(); // Terminate application
-    }
-
-    private static void askForValue(ActorRef node, KeyValue.Get getValue) {
-        // Prepare
-        CompletableFuture<Object> valueRequest = ask(node, getValue, Duration.ofMillis(STANDARD_TIME_OUT)).toCompletableFuture();
-
-        // Send
-        CompletableFuture<KeyValue.Reply> transformed =
-                CompletableFuture.allOf(valueRequest)
-                        .thenApply(v -> (KeyValue.Reply) valueRequest.join());
-
-        // Handle response
-        transformed.whenComplete((getValueRequest, throwable) -> {
-            if (throwable != null) {
-                throwable.printStackTrace();
-            } else {
-                System.out.println("Response for get value: " + getValueRequest.value.toString());
-            }
-        });
     }
 }

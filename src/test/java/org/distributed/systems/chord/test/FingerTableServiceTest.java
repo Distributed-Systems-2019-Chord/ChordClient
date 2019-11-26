@@ -1,5 +1,6 @@
 package org.distributed.systems.chord.test;
 
+import org.distributed.systems.ChordStart;
 import org.distributed.systems.chord.model.ChordNode;
 import org.distributed.systems.chord.model.finger.FingerInterval;
 import org.distributed.systems.chord.model.finger.FingerTable;
@@ -36,11 +37,12 @@ public class FingerTableServiceTest {
 
     @Test
     public void calcInterval() {
+        // BASED ON m = 160
         FingerInterval expectedInterval1 = new FingerInterval(2, 3);
         FingerInterval expectedInterval2 = new FingerInterval(3, 5);
-        FingerInterval expectedInterval3 = new FingerInterval(5, 1);
+        FingerInterval expectedInterval3 = new FingerInterval(5, 9);
 
-        FingerTable fingerTableRes = service.initFingerTable(new ChordNode(1, "", 4));
+        FingerTable fingerTableRes = service.initFingerTable(new ChordNode(1));
 
 
         assertEquals(expectedInterval1.getStartKey(), fingerTableRes.getFingerList().get(0).getInterval().getStartKey());
@@ -49,6 +51,23 @@ public class FingerTableServiceTest {
         assertEquals(expectedInterval2.getEndKey(), fingerTableRes.getFingerList().get(1).getInterval().getEndKey());
         assertEquals(expectedInterval3.getStartKey(), fingerTableRes.getFingerList().get(2).getInterval().getStartKey());
         assertEquals(expectedInterval3.getEndKey(), fingerTableRes.getFingerList().get(2).getInterval().getEndKey());
+    }
 
+    @Test
+    public void calcIntervalWithPassingFirstNode() {
+        // BASED ON m = 160
+        FingerInterval expectedInterval1 = new FingerInterval(ChordStart.AMOUNT_OF_KEYS - 1, 0);
+        FingerInterval expectedInterval2 = new FingerInterval(0, 2);
+        FingerInterval expectedInterval3 = new FingerInterval(2, 6);
+
+        FingerTable fingerTableRes = service.initFingerTable(new ChordNode(ChordStart.AMOUNT_OF_KEYS - 2));
+
+
+        assertEquals(expectedInterval1.getStartKey(), fingerTableRes.getFingerList().get(0).getInterval().getStartKey());
+        assertEquals(expectedInterval1.getEndKey(), fingerTableRes.getFingerList().get(0).getInterval().getEndKey());
+        assertEquals(expectedInterval2.getStartKey(), fingerTableRes.getFingerList().get(1).getInterval().getStartKey());
+        assertEquals(expectedInterval2.getEndKey(), fingerTableRes.getFingerList().get(1).getInterval().getEndKey());
+        assertEquals(expectedInterval3.getStartKey(), fingerTableRes.getFingerList().get(2).getInterval().getStartKey());
+        assertEquals(expectedInterval3.getEndKey(), fingerTableRes.getFingerList().get(2).getInterval().getEndKey());
     }
 }
