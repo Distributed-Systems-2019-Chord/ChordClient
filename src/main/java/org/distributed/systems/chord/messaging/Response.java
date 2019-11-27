@@ -1,4 +1,6 @@
 package org.distributed.systems.chord.messaging;
 
-interface Response {
+import java.io.Serializable;
+
+interface Response extends Serializable {
 }

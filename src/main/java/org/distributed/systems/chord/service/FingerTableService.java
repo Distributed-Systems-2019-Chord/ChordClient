@@ -37,6 +37,9 @@ public class FingerTableService {
 
     public void handleFingerTableMessage(org.distributed.systems.chord.messaging.FingerTable.Reply getFingerTableMessage) {
         //TODO
+//        getFingerTableMessage.successors;
+//        getFingerTableMessage.predecessor;
+
     }
 
     public FingerTable initFingerTable(ChordNode node, FingerTable fingerTableCentral) {
