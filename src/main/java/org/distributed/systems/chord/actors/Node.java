@@ -1,9 +1,6 @@
 package org.distributed.systems.chord.actors;
 
-import akka.actor.AbstractActor;
-import akka.actor.ActorRef;
-import akka.actor.ActorSelection;
-import akka.actor.Props;
+import akka.actor.*;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import akka.io.Tcp;
@@ -97,7 +94,8 @@ public class Node extends AbstractActor {
                 .match(Connected.class, conn -> {
                     System.out.println("MemCache Client connected");
                     manager.tell(conn, getSelf());
-                    getSender().tell(TcpMessage.register(this.storageActorRef), getSelf());
+                    ActorRef memcacheHandler = getContext().actorOf(Props.create(MemcachedActor.class, storageActorRef = this.storageActorRef));
+                    getSender().tell(TcpMessage.register(memcacheHandler), getSelf());
                 })
                 .match(NodeJoinMessage.class, nodeJoinMessage -> fingerTableService.addSuccessor(nodeJoinMessage.getNode()))
                 .match(KeyValue.Put.class, putValueMessage -> {

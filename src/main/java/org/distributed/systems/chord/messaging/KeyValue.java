@@ -15,6 +15,11 @@ public class KeyValue {
         }
     }
 
+    public static class PutReply implements Response {
+        public PutReply() {
+        }
+    }
+
     public static class Get implements Command, Serializable {
         public final String key;
 
@@ -23,11 +28,11 @@ public class KeyValue {
         }
     }
 
-    public static class Reply implements Response {
+    public static class GetReply implements Response {
 
         public final Serializable value;
 
-        public Reply(Serializable value) {
+        public GetReply(Serializable value) {
             this.value = value;
         }
     }
