@@ -2,12 +2,11 @@ package org.distributed.systems.chord.messaging;
 
 import org.distributed.systems.chord.model.ChordNode;
 
-import java.io.Serializable;
 import java.util.List;
 
 public class FingerTable {
 
-    public static class Get implements Command, Serializable {
+    public static class Get implements Command {
 
         private long hash;
 
@@ -21,7 +20,7 @@ public class FingerTable {
     }
 
 
-    public static class Reply implements Response, Serializable {
+    public static class Reply implements Response {
 
         public final List<ChordNode> successors;
         public final ChordNode predecessor;
@@ -60,13 +59,13 @@ public class FingerTable {
 
     public static class GetSuccessor implements Command {
 
-        private long id;
+        private Long id;
 
-        public GetSuccessor(long id) {
+        public GetSuccessor(Long id) {
             this.id = id;
         }
 
-        public long getId() {
+        public Long getId() {
             return id;
         }
     }

@@ -62,6 +62,9 @@ public class Node extends AbstractActor {
             // Ask nearest actor for finger table
             Long id = hashUtil.hash(getSelf().toString());
             nodeRepository.askForSuccessor(centralNode, id).whenComplete((getSuccessorReply, throwable) -> {
+                if (throwable != null) {
+                    throwable.printStackTrace();
+                }
                 System.out.println("I found my successor! " + getSuccessorReply.getChordNode().getId());
                 fingerTableService.setSuccessor(getSuccessorReply.getChordNode());
             });
@@ -115,7 +118,7 @@ public class Node extends AbstractActor {
                 })
                 .match(FingerTable.GetSuccessor.class, getSuccessor -> {
                     ChordNode node = closestPrecedingFinger(getSuccessor.getId());
-                    getSender().tell(node, getSelf());
+                    getSender().tell(new FingerTable.GetSuccessorReply(node), getSelf());
                 })
                 .build();
     }
@@ -138,7 +141,7 @@ public class Node extends AbstractActor {
     private ChordNode closestPrecedingFinger(long id) {
         List<Finger> fingers = fingerTableService.getFingers();
 
-        for (int i = ChordStart.m; i > 0; i--) {
+        for (int i = ChordStart.m - 1; i > 0; i--) {
             if (fingers.get(i).getInterval().getStartKey() > id && id < fingers.get(i).getInterval().getEndKey()) { // In interval?
                 // Ask successor
                 //TODO Check successor != getSelf();

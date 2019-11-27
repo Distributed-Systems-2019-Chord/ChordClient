@@ -1,4 +1,6 @@
 package org.distributed.systems.chord.messaging;
 
-interface Command {
+import java.io.Serializable;
+
+interface Command extends Serializable {
 }
