@@ -49,7 +49,7 @@ class MemcachedActor extends AbstractActor {
         System.out.println(Arrays.toString(textCommandLines));
 
         for (String textCommand : textCommandLines) {
-            if (textCommand.startsWith("get")) {
+            if (textCommand.startsWith("get") && !previousTextCommand.startsWith("set")) {
                 handleGetCommand(textCommand);
             } else if (textCommand.startsWith("set")) {
                 // do nothing, go to payload
