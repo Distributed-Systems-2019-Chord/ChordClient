@@ -12,6 +12,7 @@ import org.distributed.systems.chord.messaging.KeyValue;
 import org.distributed.systems.chord.messaging.NodeJoinMessage;
 import org.distributed.systems.chord.messaging.NodeLeaveMessage;
 import org.distributed.systems.chord.model.ChordNode;
+import org.distributed.systems.chord.model.finger.Finger;
 import org.distributed.systems.chord.repository.FingerRepository;
 import org.distributed.systems.chord.repository.NodeRepository;
 import org.distributed.systems.chord.service.FingerTableService;
@@ -50,8 +51,6 @@ public class Node extends AbstractActor {
         if (nodeType.equals("regular")) {
             final String centralEntityAddress = config.getString("myapp.centralEntityAddress");
             String centralNodeAddress = "akka://ChordNetwork@" + centralEntityAddress + "/user/ChordActor0";
-            //"akka://ChordNetwork@127.0.0.1:25521/user/ChordActor0"; //
-
             ActorSelection centralNode = getContext().actorSelection(centralNodeAddress);
             log.info(getSelf().path() + " Sending message to: " + centralNodeAddress);
 
@@ -93,8 +92,10 @@ public class Node extends AbstractActor {
                     log.info("send figner table to new node");
 //                    List<ChordNode> successors = fingerTableService.chordNodes();
                     getSender().tell(new FingerTable.Reply(
-                                    Util.getActorRef(getContext(), fingerTableService.getSuccessor()).anchor(),
-                                    Util.getActorRef(getContext(), fingerTableService.getPredecessor()).anchor()),
+                                    fingerTableService.getFingers().stream()
+                                            .map(Finger::getSucc)
+                                            .collect(Collectors.toList()),
+                                    fingerTableService.getPredecessor()),
                             getSelf()
                     );
                 })

@@ -28,10 +28,10 @@ public class FingerRepository {
             } else {
                 fingerTableService.handleFingerTableMessage(getFingerTableMessage);
 
-//                System.out.println("Response for get finger table: " +
-//                        "successor: " + getFingerTableMessage.successor + "\n" +
-//                        "predecessor: " + getFingerTableMessage.predecessor
-//                );
+                System.out.println("Response for get finger table: " +
+                        "successor: " + getFingerTableMessage.successor + "\n" +
+                        "predecessor: " + getFingerTableMessage.predecessor
+                );
             }
         });
     }
