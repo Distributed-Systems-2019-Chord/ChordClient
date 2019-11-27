@@ -132,8 +132,17 @@ public class Node extends AbstractActor {
     }
 
     public ChordNode findSuccessor(long id) {
-        // send message
-        return null;
+        ChordNode successor = fingerTableService.getSuccessor();
+        ChordNode pred = findPredecessor(id);
+
+        if(pred.getId() == successor.getId()){
+            successor = nodeRepository.askForSuccessor(getContext(), pred).join().getChordNode();
+        }
+
+        if (successor == null){
+            return node;
+        }
+        return successor;
     }
 
     public ChordNode findPredecessor(long id) {
@@ -144,11 +153,11 @@ public class Node extends AbstractActor {
         List<Finger> fingers = fingerTableService.getFingers();
 
         for (int i = ChordStart.m - 1; i > 0; i--) {
-            if (fingers.get(i).getInterval().getStartKey() > id && id < fingers.get(i).getInterval().getEndKey()) { // In interval?
-                // Ask successor
+//            // Is in interval?
+            if (fingers.get(i).getInterval().getStartKey() > id && id < fingers.get(i).getInterval().getEndKey()) {
                 //TODO Check successor != getSelf();
-                return nodeRepository.askForSuccessor(getContext(), fingers.get(i).getSucc()).join().getChordNode();
-//                return nodeRepository.askForSuccessor(getContext(), fingers.get(i).getSucc());
+                // Return closest
+                return fingers.get(i).getSucc();
             }
         }
         ChordNode result = fingerTableService.getFingers().get(0).getSucc();
