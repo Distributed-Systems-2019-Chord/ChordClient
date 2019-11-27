@@ -8,6 +8,9 @@ import org.distributed.systems.chord.actors.Node;
 import org.distributed.systems.chord.util.IHashUtil;
 import org.distributed.systems.chord.util.impl.HashUtil;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+
 public class ChordStart {
 
     public static final int STANDARD_TIME_OUT = 5000;
@@ -16,19 +19,12 @@ public class ChordStart {
     public static final long AMOUNT_OF_KEYS = Math.round(Math.pow(2, m));
 
     public static ActorRef node;
-    private static IHashUtil hashUtil = new HashUtil();
-    public static final long NODE_ID = 1L;//hashUtil.hash(System.getProperty("hostname"));
+    public static long NODE_ID;
 
-    public static void main(String[] args) {
-        IHashUtil hashUtil = new HashUtil();
 
+    public static void main(String[] args){
         // Create actor system
         ActorSystem system = ActorSystem.create("ChordNetwork"); // Setup actor system
-
-        // Create start node
-//        ChordNode startNode = new ChordNode(0L);
-        //ChordNode startNode = new ChordNode(1L, "127.0.0.1", 2551);
-
 
         Config config = system.settings().config();
         final String nodeType = config.getString("myapp.nodeType");

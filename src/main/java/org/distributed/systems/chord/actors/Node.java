@@ -43,6 +43,8 @@ public class Node extends AbstractActor {
     public void preStart() throws Exception {
         super.preStart();
         log.info("Starting up...     ref: " + getSelf());
+        ChordStart.NODE_ID = hashUtil.hash(getSelf().path().toSerializationFormat()); // FIXME Should be IP
+        System.out.println("Starting up with node_id: " + ChordStart.NODE_ID);
 
         Config config = getContext().getSystem().settings().config();
         final String nodeType = config.getString("myapp.nodeType");
@@ -60,8 +62,8 @@ public class Node extends AbstractActor {
             // Extract useful information from fingerTable
 
             // Ask nearest actor for finger table
-            Long id = hashUtil.hash(getSelf().toString());
-            nodeRepository.askForSuccessor(centralNode, id).whenComplete((getSuccessorReply, throwable) -> {
+//            Long id = hashUtil.hash(getSelf().toString());
+            nodeRepository.askForSuccessor(centralNode, ChordStart.NODE_ID).whenComplete((getSuccessorReply, throwable) -> {
                 if (throwable != null) {
                     throwable.printStackTrace();
                 }
@@ -70,7 +72,7 @@ public class Node extends AbstractActor {
             });
 
         } else if (nodeType.equals("central")) {
-            ChordNode central = new ChordNode(hashUtil.hash(Util.getIp(config)), Util.getIp(config), Util.getPort(config));
+            ChordNode central = new ChordNode(ChordStart.NODE_ID, Util.getIp(config), Util.getPort(config));
             fingerTableService.setFingerTable(fingerTableService.initFingerTableCentral(central));
             fingerTableService.setPredecessor(central);
         }
