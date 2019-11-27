@@ -5,11 +5,6 @@ import akka.actor.ActorSystem;
 import akka.actor.Props;
 import com.typesafe.config.Config;
 import org.distributed.systems.chord.actors.Node;
-import org.distributed.systems.chord.util.IHashUtil;
-import org.distributed.systems.chord.util.impl.HashUtil;
-
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 
 public class ChordStart {
 
@@ -19,10 +14,8 @@ public class ChordStart {
     public static final long AMOUNT_OF_KEYS = Math.round(Math.pow(2, m));
 
     public static ActorRef node;
-    public static long NODE_ID;
 
-
-    public static void main(String[] args){
+    public static void main(String[] args) {
         // Create actor system
         ActorSystem system = ActorSystem.create("ChordNetwork"); // Setup actor system
 
