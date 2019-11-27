@@ -29,7 +29,7 @@ public class FingerRepository {
                 fingerTableService.handleFingerTableMessage(getFingerTableMessage);
 
                 System.out.println("Response for get finger table: " +
-                        "successor: " + getFingerTableMessage.successor + "\n" +
+                        "successor: " + getFingerTableMessage.successors + "\n" +
                         "predecessor: " + getFingerTableMessage.predecessor
                 );
             }

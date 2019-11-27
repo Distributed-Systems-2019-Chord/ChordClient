@@ -31,4 +31,56 @@ public class FingerTable {
             this.predecessor = predecessor;
         }
     }
+
+    public static class GetPredecessor implements Command {
+
+        private final long nodeId;
+
+        public GetPredecessor(long nodeId) {
+            this.nodeId = nodeId;
+        }
+
+        public long getId() {
+            return nodeId;
+        }
+    }
+
+    public static class GetPredecessorReply implements Response {
+
+        private final ChordNode predecessor;
+
+        public GetPredecessorReply(ChordNode predecessor) {
+            this.predecessor = predecessor;
+        }
+
+        public ChordNode getChordNode() {
+            return this.predecessor;
+        }
+    }
+
+    public static class GetSuccessor implements Command {
+
+        private long id;
+
+        public GetSuccessor(long id) {
+            this.id = id;
+        }
+
+        public long getId() {
+            return id;
+        }
+    }
+
+    public static class GetSuccessorReply implements Response {
+
+        private final ChordNode successor;
+
+        public GetSuccessorReply(ChordNode successor) {
+            this.successor = successor;
+        }
+
+        public ChordNode getChordNode() {
+            return this.successor;
+        }
+    }
 }

@@ -15,7 +15,9 @@ public class ChordStart {
     public static final int m = 16; // Number of bits in key id's
     public static final long AMOUNT_OF_KEYS = Math.round(Math.pow(2, m));
 
-    private static ActorRef node;
+    public static ActorRef node;
+    private static IHashUtil hashUtil = new HashUtil();
+    public static final long NODE_ID = 1L;//hashUtil.hash(System.getProperty("hostname"));
 
     public static void main(String[] args) {
         IHashUtil hashUtil = new HashUtil();

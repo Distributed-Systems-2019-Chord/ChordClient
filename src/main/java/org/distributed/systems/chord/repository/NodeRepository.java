@@ -1,8 +1,11 @@
 package org.distributed.systems.chord.repository;
 
+import akka.actor.ActorContext;
 import akka.actor.ActorSelection;
 import org.distributed.systems.ChordStart;
+import org.distributed.systems.chord.messaging.FingerTable;
 import org.distributed.systems.chord.model.ChordNode;
+import org.distributed.systems.chord.util.Util;
 
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
@@ -11,42 +14,28 @@ import static akka.pattern.Patterns.ask;
 
 public class NodeRepository {
 
-    private static class GetSuccessor {
-
-    }
-
-    private static class GetSuccessorReply {
-
-        private final ChordNode successor;
-
-        public GetSuccessorReply(ChordNode successor) {
-            this.successor = successor;
-        }
-
-        public ChordNode getChordNode() {
-            return this.successor;
-        }
-    }
-
-    public ChordNode askForSuccessor(ActorSelection selectedActor) {
+    public CompletableFuture<FingerTable.GetPredecessorReply> askForPredecessor(ActorContext context, ChordNode finger) {
+        ActorSelection selectedActor = Util.getActorRef(context, finger);
         // Prepare
-        CompletableFuture<Object> successorRequest = ask(selectedActor, GetSuccessor.class, Duration.ofMillis(ChordStart.STANDARD_TIME_OUT)).toCompletableFuture();
-
-        // Send
-        CompletableFuture<GetSuccessorReply> transformed =
-                CompletableFuture.allOf(successorRequest)
-                        .thenApply(v -> (GetSuccessorReply) successorRequest.join());
+        CompletableFuture<Object> predecessorRequest = ask(selectedActor, FingerTable.GetPredecessor.class, Duration.ofMillis(ChordStart.STANDARD_TIME_OUT)).toCompletableFuture();
 
         // Handle response
-        final ChordNode[] response = {null};
-        transformed.whenComplete((successorRequestReply, throwable) -> {
-            if (throwable != null) {
-                throwable.printStackTrace();
-            } else {
-                response[0] = successorRequestReply.getChordNode();
-            }
-        });
+        return CompletableFuture.allOf(predecessorRequest)
+                .thenApply(v -> (FingerTable.GetPredecessorReply) predecessorRequest.join());
+    }
 
-        return response[0];
+    public CompletableFuture<FingerTable.GetSuccessorReply> askForSuccessor(ActorContext context, ChordNode node) {
+        ActorSelection selectedActor = Util.getActorRef(context, node);
+        return askForSuccessor(selectedActor, node.getId());
+    }
+
+    public CompletableFuture<FingerTable.GetSuccessorReply> askForSuccessor(ActorSelection selectedActor, long id) {
+
+        // Prepare
+        CompletableFuture<Object> successorRequest = ask(selectedActor, new FingerTable.GetSuccessor(id), Duration.ofMillis(ChordStart.STANDARD_TIME_OUT)).toCompletableFuture();
+
+        // Handle response
+        return CompletableFuture.allOf(successorRequest)
+                .thenApply(v -> (FingerTable.GetSuccessorReply) successorRequest.join());
     }
 }
