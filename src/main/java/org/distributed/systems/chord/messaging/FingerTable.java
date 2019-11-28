@@ -82,4 +82,52 @@ public class FingerTable {
             return this.successor;
         }
     }
+
+    public static class GetClosestPrecedingFinger implements Command{
+        private long id;
+
+        public long getId() {
+            return id;
+        }
+
+        public GetClosestPrecedingFinger(long id) {
+            this.id = id;
+        }
+    }
+    public static class GetClosestPrecedingFingerReply implements Response {
+
+        private final ChordNode closest;
+
+        public GetClosestPrecedingFingerReply(ChordNode closest) {
+            this.closest = closest;
+        }
+
+        public ChordNode getClosestChordNode() {
+            return this.closest;
+        }
+    }
+
+    public static class FindSuccessor implements Command {
+        private long id;
+
+        public FindSuccessor(long id) {
+            this.id = id;
+        }
+
+        public long getId() {
+            return id;
+        }
+    }
+
+    public static class FindSuccessorReply implements Response {
+        private final ChordNode successor;
+
+        public FindSuccessorReply(ChordNode successor) {
+            this.successor = successor;
+        }
+
+        public ChordNode getChordNode() {
+            return this.successor;
+        }
+    }
 }

@@ -38,4 +38,24 @@ public class NodeRepository {
         return CompletableFuture.allOf(successorRequest)
                 .thenApply(v -> (FingerTable.GetSuccessorReply) successorRequest.join());
     }
+
+    public CompletableFuture<FingerTable.FindSuccessorReply> askForFindingSuccessor(ActorSelection selectedActor, long id) {
+
+        // Prepare
+        CompletableFuture<Object> successorSearchRequest = ask(selectedActor, new FingerTable.FindSuccessor(id), Duration.ofMillis(ChordStart.STANDARD_TIME_OUT)).toCompletableFuture();
+
+        // Handle response
+        return CompletableFuture.allOf(successorSearchRequest)
+                .thenApply(v -> (FingerTable.FindSuccessorReply) successorSearchRequest.join());
+    }
+
+    public CompletableFuture<FingerTable.GetClosestPrecedingFingerReply> askForClosestPrecedingFinger(ActorSelection selectedActor, long id) {
+
+        // Prepare
+        CompletableFuture<Object> closestPrecedingFingerRequest = ask(selectedActor, new FingerTable.GetClosestPrecedingFinger(id), Duration.ofMillis(ChordStart.STANDARD_TIME_OUT)).toCompletableFuture();
+
+        // Handle response
+        return CompletableFuture.allOf(closestPrecedingFingerRequest)
+                .thenApply(v -> (FingerTable.GetClosestPrecedingFingerReply) closestPrecedingFingerRequest.join());
+    }
 }

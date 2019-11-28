@@ -58,20 +58,21 @@ public class Node extends AbstractActor {
             ActorSelection centralNode = getContext().actorSelection(centralNodeAddress);
             log.info(getSelf().path() + " Sending message to: " + centralNodeAddress);
 
-            // FingerTable central
+            nodeRepository.askForFindingSuccessor(centralNode, NODE_ID);
+                    // FingerTable central
 //            FingerRepository.askForFingerTable(centralNode, new FingerTable.Get(hashUtil.hash(getSelf().toString())), fingerTableService);
 
-            // Extract useful information from fingerTable
+                    // Extract useful information from fingerTable
 
-            // Ask nearest actor for finger table
+                    // Ask nearest actor for finger table
 //            Long id = hashUtil.hash(getSelf().toString());
-            nodeRepository.askForSuccessor(centralNode, node.getId()).whenComplete((getSuccessorReply, throwable) -> {
-                if (throwable != null) {
-                    throwable.printStackTrace();
-                }
-                System.out.println("I found my successor! " + getSuccessorReply.getChordNode().getId());
-                fingerTableService.setSuccessor(getSuccessorReply.getChordNode());
-            });
+//            nodeRepository.askForSuccessor(centralNode, node.getId()).whenComplete((getSuccessorReply, throwable) -> {
+//                if (throwable != null) {
+//                    throwable.printStackTrace();
+//                }
+//                System.out.println("I found my successor! " + getSuccessorReply.getChordNode().getId());
+//                fingerTableService.setSuccessor(getSuccessorReply.getChordNode());
+//            });
 
         } else if (nodeType.equals("central")) {
             fingerTableService.setFingerTable(fingerTableService.initFingerTableCentral(node));
@@ -87,7 +88,6 @@ public class Node extends AbstractActor {
                 .match(NodeJoinMessage.class, nodeJoinMessage -> {
                     log.info("Msg Received from Node " + getSender().path());
                     //TODO: fingertable atm is not a finger table. Adjust fingertable l8r when we implement fingertable biz logic.
-
                 })
                 .match(KeyValue.Put.class, putValueMessage -> {
                     String key = putValueMessage.key;
@@ -120,8 +120,16 @@ public class Node extends AbstractActor {
 //                    fingerTableService.removeSuccessor(nodeLeaveMessage.getNode());
                 })
                 .match(FingerTable.GetSuccessor.class, getSuccessor -> {
-                    ChordNode node = closestPrecedingFinger(getSuccessor.getId());
+                    ChordNode node = fingerTableService.getSuccessor();
                     getSender().tell(new FingerTable.GetSuccessorReply(node), getSelf());
+                })
+                .match(FingerTable.GetClosestPrecedingFinger.class, getClosestPrecedingFinger ->  {
+                    ChordNode closest = closestPrecedingFinger(getClosestPrecedingFinger.getId());
+                    getSender().tell(new FingerTable.GetClosestPrecedingFingerReply(closest), getSelf());
+                })
+                .match(FingerTable.FindSuccessor.class, findSuccessor -> {
+                    ChordNode successor = findSuccessor(findSuccessor.getId());
+                    getSender().tell(new FingerTable.FindSuccessorReply(successor), getSelf());
                 })
                 .build();
     }
@@ -147,12 +155,20 @@ public class Node extends AbstractActor {
     }
 
     public ChordNode findPredecessor(long id) {
-        ChordNode node = null;
-        while (!(id > this.node.getId() && id <= fingerTableService.getSuccessor().getId())) {
-            return nodeRepository.askForPredecessor(getContext(), closestPrecedingFinger(id)).join().getChordNode();
-        }
 
-        return node;
+        ChordNode closest = node;
+        //TODO: Don't do rpc call in while check? replace at end of loop maybe?
+        while (!(id > closest.getId() && id <= nodeRepository.askForSuccessor(getContext(), closest).join().getChordNode().getId())) {
+            if(id == closest.getId()){
+                closest = closestPrecedingFinger(id);
+            } else{
+                closest = nodeRepository.askForClosestPrecedingFinger(Util.getActorRef(getContext(), closest), id)
+                        .join()
+                        .getClosestChordNode();
+            }
+//            return nodeRepository.askForPredecessor(getContext(), closestPrecedingFinger(id)).join().getChordNode();
+        }
+        return closest;
     }
 
     private ChordNode closestPrecedingFinger(long id) {
@@ -166,7 +182,6 @@ public class Node extends AbstractActor {
                 return fingers.get(i).getSucc();
             }
         }
-
         // Return self
         return node;
     }
