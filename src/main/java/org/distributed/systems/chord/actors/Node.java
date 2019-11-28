@@ -113,6 +113,10 @@ public class Node extends AbstractActor {
                     ChordNode node = fingerTableService.getSuccessor();
                     getSender().tell(new FingerTable.GetSuccessorReply(node), getSelf());
                 })
+                .match(FingerTable.SetPredecessor.class, setPredecessor -> {
+                    fingerTableService.setPredecessor(setPredecessor.getNode());
+//                    getSender().tell(new FingerTable.GetSuccessorReply(node), getSelf());
+                })
                 .match(FingerTable.GetClosestPrecedingFinger.class, getClosestPrecedingFinger -> {
                     ChordNode closest = closestPrecedingFinger(getClosestPrecedingFinger.getId());
                     getSender().tell(new FingerTable.GetClosestPrecedingFingerReply(closest), getSelf());
@@ -245,7 +249,7 @@ public class Node extends AbstractActor {
             }
         });
         // Tell successor that I am his new predecessor
-        Util.getActorRef(getContext(), fingerTableService.getSuccessor()).tell("UPDATE PREDECESSOR with node", getSelf());
+        Util.getActorRef(getContext(), fingerTableService.getSuccessor()).tell(new FingerTable.SetPredecessor(node), getSelf());
 
         for (int i = 1; i < ChordStart.m - 1; i++) {
             //
