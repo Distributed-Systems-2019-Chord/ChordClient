@@ -57,6 +57,19 @@ public class FingerTable {
         }
     }
 
+    public static class SetPredecessor implements Command {
+
+        private final ChordNode predecessor;
+
+        public SetPredecessor(ChordNode predecessor) {
+            this.predecessor = predecessor;
+        }
+
+        public ChordNode getNode() {
+            return predecessor;
+        }
+    }
+
     public static class GetSuccessor implements Command {
 
         private Long id;
