@@ -26,7 +26,7 @@ public class FingerRepository {
             if (throwable != null) {
                 throwable.printStackTrace();
             } else {
-                fingerTableService.handleFingerTableMessage(getFingerTableMessage);
+//                fingerTableService.handleFingerTableMessage(getFingerTableMessage);
 
                 System.out.println("Response for get finger table: " +
                         "successor: " + getFingerTableMessage.successors + "\n" +

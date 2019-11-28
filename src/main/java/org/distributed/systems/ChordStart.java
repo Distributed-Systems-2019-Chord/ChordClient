@@ -29,8 +29,8 @@ public class ChordStart {
         }
 
 
-//        String hashId = hashUtil.hash(String.valueOf(startNode.getId()));
-//        String hashKey = hashUtil.hash(String.valueOf(startNode.getId()));
+//        String hashId = hashUtil.hash(String.valueOf(startNode.getNodeId()));
+//        String hashKey = hashUtil.hash(String.valueOf(startNode.getNodeId()));
 //
 //        // Create (tell) messages
 //        NodeJoinMessage joinMessage = new NodeJoinMessage(startNode);
