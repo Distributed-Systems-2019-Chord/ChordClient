@@ -52,18 +52,18 @@ public class Node extends AbstractActor {
         join();
 
 
-            // FingerTable central
+        // FingerTable central
 //            FingerRepository.askForFingerTable(centralNode, new FingerTable.Get(hashUtil.hash(getSelf().toString())), fingerTableService);
 
-            // Extract useful information from fingerTable
+        // Extract useful information from fingerTable
 
-            // Ask nearest actor for finger table
+        // Ask nearest actor for finger table
 //            Long id = hashUtil.hash(getSelf().toString());
-//            nodeRepository.askForSuccessor(centralNode, node.getId()).whenComplete((getSuccessorReply, throwable) -> {
+//            nodeRepository.askForSuccessor(centralNode, node.getNodeId()).whenComplete((getSuccessorReply, throwable) -> {
 //                if (throwable != null) {
 //                    throwable.printStackTrace();
 //                }
-//                System.out.println("I found my successor! " + getSuccessorReply.getChordNode().getId());
+//                System.out.println("I found my successor! " + getSuccessorReply.getChordNode().getNodeId());
 //                fingerTableService.setSuccessor(getSuccessorReply.getChordNode());
 //            });
 
@@ -106,7 +106,7 @@ public class Node extends AbstractActor {
                     );
                 })
                 .match(NodeLeaveMessage.class, nodeLeaveMessage -> {
-//                    log.info("Node " + nodeLeaveMessage.getNode().getId() + " leaving");
+//                    log.info("Node " + nodeLeaveMessage.getNode().getNodeId() + " leaving");
 //                    fingerTableService.removeSuccessor(nodeLeaveMessage.getNode());
                 })
                 .match(FingerTable.GetSuccessor.class, getSuccessor -> {
@@ -120,6 +120,10 @@ public class Node extends AbstractActor {
                 .match(FingerTable.FindSuccessor.class, findSuccessor -> {
                     ChordNode successor = findSuccessor(findSuccessor.getId());
                     getSender().tell(new FingerTable.FindSuccessorReply(successor), getSelf());
+                })
+                .match(FingerTable.UpdateFinger.class, updateFinger -> {
+                    // Fire and forget ?
+                    updateFingerTable(updateFinger.getNodeId(), updateFinger.getFingerTableIndex());
                 })
                 .build();
     }
@@ -198,7 +202,7 @@ public class Node extends AbstractActor {
         return node;
     }
 
-    public void join(){
+    public void join() {
         final String nodeType = config.getString("myapp.nodeType");
         log.info("DEBUG -- nodetype: " + nodeType);
         if (nodeType.equals("regular")) {
@@ -215,11 +219,10 @@ public class Node extends AbstractActor {
                     log.info("We got a successor! " + findSuccessorReply.getChordNode().getId());
                 }
             });
-        }
-        else if (nodeType.equals("central")) {
+        } else if (nodeType.equals("central")) {
             fingerTableService.setFingerTable(fingerTableService.initFingerTableCentral(node));
             fingerTableService.setPredecessor(node);
-         }
+        }
     }
 
     public void initFingerTable(ChordNode centralNode) {
@@ -249,6 +252,27 @@ public class Node extends AbstractActor {
 //            if()
             //
 //            else
+        }
+    }
+
+
+    public void updateOthers() {
+        for (int i = 1; i < ChordStart.m; i++) {
+            ChordNode predecessor = findPredecessor(getFingerWhoseIthFingerMightBeNode(i));
+
+            ActorSelection actorRef = Util.getActorRef(getContext(), predecessor);
+            actorRef.tell(new FingerTable.UpdateFinger(node.getId(), i), getSelf());
+        }
+    }
+
+    private long getFingerWhoseIthFingerMightBeNode(int i) {
+        return (long) (node.getId() - Math.pow(2, (i - 1)));
+    }
+
+    private void updateFingerTable(long nodeId, int index) {
+        if (nodeId > node.getId() && nodeId <= fingerTableService.getSuccessor().getId()) {
+            ActorSelection actorRef = Util.getActorRef(getContext(), fingerTableService.getPredecessor());
+            actorRef.tell(new FingerTable.UpdateFinger(node.getId(), index), getSelf());
         }
     }
 }

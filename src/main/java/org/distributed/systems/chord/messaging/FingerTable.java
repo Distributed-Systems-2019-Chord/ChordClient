@@ -131,4 +131,23 @@ public class FingerTable {
             return this.successor;
         }
     }
+
+    public static class UpdateFinger implements Command {
+        private final long nodeId;
+
+        private final int fingerTableIndex;
+
+        public UpdateFinger(long id, int fingerTableIndex) {
+            this.nodeId = id;
+            this.fingerTableIndex = fingerTableIndex;
+        }
+
+        public long getNodeId() {
+            return nodeId;
+        }
+
+        public int getFingerTableIndex() {
+            return fingerTableIndex;
+        }
+    }
 }
