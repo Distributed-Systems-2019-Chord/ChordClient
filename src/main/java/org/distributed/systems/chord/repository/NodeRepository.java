@@ -9,6 +9,7 @@ import org.distributed.systems.chord.util.Util;
 
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 import static akka.pattern.Patterns.ask;
 
@@ -56,6 +57,13 @@ public class NodeRepository {
 
         // Handle response
         return CompletableFuture.allOf(closestPrecedingFingerRequest)
-                .thenApply(v -> (FingerTable.GetClosestPrecedingFingerReply) closestPrecedingFingerRequest.join());
+                .thenApply(v -> {
+                    try {
+                        return (FingerTable.GetClosestPrecedingFingerReply) closestPrecedingFingerRequest.get();
+                    } catch (InterruptedException | ExecutionException e) {
+                        e.printStackTrace();
+                    }
+                    return null;
+                });
     }
 }

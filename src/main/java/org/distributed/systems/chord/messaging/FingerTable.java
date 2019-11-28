@@ -83,7 +83,7 @@ public class FingerTable {
         }
     }
 
-    public static class GetClosestPrecedingFinger implements Command{
+    public static class GetClosestPrecedingFinger implements Command {
         private long id;
 
         public long getId() {
@@ -94,6 +94,7 @@ public class FingerTable {
             this.id = id;
         }
     }
+
     public static class GetClosestPrecedingFingerReply implements Response {
 
         private final ChordNode closest;
