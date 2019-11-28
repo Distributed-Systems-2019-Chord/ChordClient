@@ -42,29 +42,13 @@ public class FingerTableService {
 
     }
 
-    public FingerTable initFingerTable(ChordNode node, FingerTable fingerTableCentral) {
-//        first use fingertable received from central node to fill in as much as possible
-
+    public FingerTable initFingerTable(ChordNode node) {
         FingerTable table = new FingerTable(new ArrayList<>(ChordStart.m), 0);
         for (int i = 1; i <= ChordStart.m; i++) {
-            long key = node.getId() + i;
-            ChordNode successor = null;
-            for (int j = 1; j <= ChordStart.m; j++) {
-//                if key can be determined based on central fingertable
-                Finger finger = fingerTableCentral.getFingerList().get(j);
-                if (key > finger.getStart() && key < finger.getSucc().getId()){
-//                    yeay match
-                    successor = finger.getSucc();
-                    break;
-                }
-            }
-            if (successor == null){
-//              if key succesor is not in fingertable of central node, we need to find the successor via the network,
-//              we do this by finding the closest predessor and asking him if he knows the successor
-            }
-
-//            construct finger
-
+            long startFinger = startFinger(node.getId(), i);
+            long endFinger = startFinger(node.getId(), i + 1);
+            FingerInterval interval = calcInterval(startFinger, endFinger);
+            table.addFinger(new Finger(startFinger, interval, calcSuccessor()));
         }
         return table;
     }

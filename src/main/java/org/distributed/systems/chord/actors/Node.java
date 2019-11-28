@@ -34,6 +34,7 @@ public class Node extends AbstractActor {
     private Map<String, Serializable> valueStore;
     private HashUtil hashUtil = new HashUtil();
     private NodeRepository nodeRepository = new NodeRepository();
+    Config config = getContext().getSystem().settings().config();
 
     public Node() {
         this.valueStore = new HashMap<>();
@@ -47,25 +48,10 @@ public class Node extends AbstractActor {
         final long NODE_ID = hashUtil.hash(getSelf().path().toSerializationFormat()); // FIXME Should be IP
         System.out.println("Starting up with node_id: " + NODE_ID);
 
-        Config config = getContext().getSystem().settings().config();
-        final String nodeType = config.getString("myapp.nodeType");
-        log.info("DEBUG -- nodetype: " + nodeType);
         node = new ChordNode(NODE_ID, Util.getIp(config), Util.getPort(config));
+        join();
 
-        if (nodeType.equals("regular")) {
-            final String centralEntityAddress = config.getString("myapp.centralEntityAddress");
-            String centralNodeAddress = "akka://ChordNetwork@" + centralEntityAddress + "/user/ChordActor0";
-            ActorSelection centralNode = getContext().actorSelection(centralNodeAddress);
-            log.info(getSelf().path() + " Sending message to: " + centralNodeAddress);
 
-            nodeRepository.askForFindingSuccessor(centralNode, NODE_ID).whenComplete((findSuccessorReply, throwable) -> {
-                if (throwable != null) {
-                    throwable.printStackTrace();
-                } else {
-                    initFingerTable();
-                    log.info("We got a successor! " + findSuccessorReply.getChordNode().getId());
-                }
-            });
             // FingerTable central
 //            FingerRepository.askForFingerTable(centralNode, new FingerTable.Get(hashUtil.hash(getSelf().toString())), fingerTableService);
 
@@ -81,10 +67,7 @@ public class Node extends AbstractActor {
 //                fingerTableService.setSuccessor(getSuccessorReply.getChordNode());
 //            });
 
-        } else if (nodeType.equals("central")) {
-            fingerTableService.setFingerTable(fingerTableService.initFingerTableCentral(node));
-            fingerTableService.setPredecessor(node);
-        }
+
     }
 
     @Override
@@ -215,13 +198,40 @@ public class Node extends AbstractActor {
         return node;
     }
 
+    public void join(){
+        final String nodeType = config.getString("myapp.nodeType");
+        log.info("DEBUG -- nodetype: " + nodeType);
+        if (nodeType.equals("regular")) {
+            final String centralEntityAddress = config.getString("myapp.centralEntityAddress");
+            String centralNodeAddress = "akka://ChordNetwork@" + centralEntityAddress + "/user/ChordActor0";
+            ActorSelection centralNode = getContext().actorSelection(centralNodeAddress);
+            log.info(getSelf().path() + " Sending message to: " + centralNodeAddress);
 
-    public void initFingerTable() {
+            nodeRepository.askForFindingSuccessor(centralNode, node.getId()).whenComplete((findSuccessorReply, throwable) -> {
+                if (throwable != null) {
+                    throwable.printStackTrace();
+                } else {
+                    initFingerTable();
+                    log.info("We got a successor! " + findSuccessorReply.getChordNode().getId());
+                }
+            });
+        }
+        else if (nodeType.equals("central")) {
+            fingerTableService.setFingerTable(fingerTableService.initFingerTableCentral(node));
+            fingerTableService.setPredecessor(node);
+         }
+    }
+
+    public void initFingerTable(ChordNode centralNode) {
+        // init finger table w/o successors
+//        fingerTableService.initFingerTable(node);
+
+        // set successors of init table
         // Loop over chord network (find_successor() -> closest_preceding_finger()) and find the successor of me + 1 (finger 1)
-        ChordNode finger = findSuccessor(node.getId());
+        ChordNode successor = findSuccessor(fingerTableService.startFinger(node.getId(), 1));
 
         // Get for first finger the predecessor, this will be our predecessor (ask)
-        CompletableFuture<FingerTable.GetPredecessorReply> predecessorMessage = nodeRepository.askForPredecessor(getContext(), finger);
+        CompletableFuture<FingerTable.GetPredecessorReply> predecessorMessage = nodeRepository.askForPredecessor(getContext(), successor);
 
         predecessorMessage.whenComplete((predecessorRequestReply, throwable) -> {
             if (throwable != null) {
@@ -232,7 +242,7 @@ public class Node extends AbstractActor {
             }
         });
         // Tell successor that I am his new predecessor
-//
+        Util.getActorRef(getContext(), fingerTableService.getSuccessor()).tell("UPDATE PREDECESSOR with node", getSelf());
 
         for (int i = 1; i < ChordStart.m - 1; i++) {
             //
