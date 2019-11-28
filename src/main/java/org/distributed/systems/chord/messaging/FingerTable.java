@@ -163,4 +163,44 @@ public class FingerTable {
             return fingerTableIndex;
         }
     }
+
+    public static class GetFingerTableSuccessor implements Command {
+
+        private long fingerTableIndex;
+
+        private long successor;
+
+        public GetFingerTableSuccessor(long fingerTableIndex, long succ) {
+            this.fingerTableIndex = fingerTableIndex;
+            this.successor = succ;
+        }
+
+        public long getFingerTableIndex() {
+            return fingerTableIndex;
+        }
+
+        public long getSuccessor() {
+            return successor;
+        }
+    }
+
+    public static class GetFingerTableSuccessorReply implements Response {
+
+        private long fingerTableIndex;
+
+        private ChordNode successor;
+
+        public GetFingerTableSuccessorReply(long beginFinger, ChordNode succ) {
+            this.fingerTableIndex = beginFinger;
+            this.successor = succ;
+        }
+
+        public long getFingerTableIndex() {
+            return fingerTableIndex;
+        }
+
+        public ChordNode getSuccessor() {
+            return successor;
+        }
+    }
 }

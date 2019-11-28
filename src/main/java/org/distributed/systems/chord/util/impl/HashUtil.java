@@ -1,5 +1,6 @@
 package org.distributed.systems.chord.util.impl;
 
+import org.distributed.systems.ChordStart;
 import org.distributed.systems.chord.util.IHashUtil;
 
 import java.io.UnsupportedEncodingException;
@@ -28,7 +29,7 @@ public class HashUtil implements IHashUtil {
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }
-        return sha1;
+        return sha1 % ChordStart.m;
     }
 
     private static String byteToHex(final byte[] hash) {

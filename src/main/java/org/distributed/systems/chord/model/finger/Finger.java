@@ -25,7 +25,16 @@ public class Finger {
         return interval;
     }
 
+    public void setSucc(ChordNode succ) {
+        this.succ = succ;
+    }
+
     public ChordNode getSucc() {
         return succ;
+    }
+
+    @Override
+    public String toString() {
+        return start + "|" + interval.getStartKey() + "-" + interval.getEndKey() + "|" + succ;
     }
 }

@@ -41,13 +41,14 @@ public class FingerTableService {
 //    }
 
     public FingerTable initFingerTableCentral(ChordNode centralNode) {
-        FingerTable table = new FingerTable(new ArrayList<>(ChordStart.m), 0);
-        for (int i = 1; i <= ChordStart.m; i++) {
+        FingerTable table = new FingerTable(new ArrayList<>(ChordStart.m), ChordStart.m);
+        for (int i = 1; i < ChordStart.m - 1; i++) {
             long startFinger = startFinger(centralNode.getId(), i);
             long endFinger = startFinger(centralNode.getId(), i + 1);
             FingerInterval interval = calcInterval(startFinger, endFinger);
             table.addFinger(new Finger(startFinger, interval, centralNode));
         }
+        System.out.println("Finger table for central node generated size is " + table.getFingerList().size() + " should be " + ChordStart.m);
         return table;
     }
 
