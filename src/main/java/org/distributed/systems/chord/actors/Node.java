@@ -1,6 +1,9 @@
 package org.distributed.systems.chord.actors;
 
-import akka.actor.*;
+import akka.actor.AbstractActor;
+import akka.actor.ActorRef;
+import akka.actor.ActorSelection;
+import akka.actor.Props;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import akka.io.Tcp;
@@ -17,19 +20,13 @@ import org.distributed.systems.chord.model.ChordNode;
 import org.distributed.systems.chord.model.finger.Finger;
 import org.distributed.systems.chord.model.finger.FingerInterval;
 import org.distributed.systems.chord.service.FingerTableService;
-import org.distributed.systems.chord.service.StorageService;
-
-import java.io.Serializable;
-import java.net.InetSocketAddress;
-import java.util.List;
 import org.distributed.systems.chord.util.Util;
 import org.distributed.systems.chord.util.impl.HashUtil;
 
 import java.io.Serializable;
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 public class Node extends AbstractActor {
@@ -43,6 +40,7 @@ public class Node extends AbstractActor {
     private FingerTableService fingerTableService;
     private ActorRef storageActorRef;
     private Config config = getContext().getSystem().settings().config();
+    private boolean memCacheEnabled = false;
 
     public Node() {
         fingerTableService = new FingerTableService();
@@ -63,7 +61,9 @@ public class Node extends AbstractActor {
         System.out.println("Starting up with node_id: " + NODE_ID);
 
         node = new ChordNode(NODE_ID, Util.getIp(config), Util.getPort(config));
-        this.createMemCacheTCPSocket();
+        if (memCacheEnabled) {
+            this.createMemCacheTCPSocket();
+        }
         joinNetwork();
     }
 
