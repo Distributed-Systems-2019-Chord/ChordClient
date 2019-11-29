@@ -36,6 +36,7 @@ public class Node extends AbstractActor {
     static final int MEMCACHE_MAX_PORT = 12235;
     final ActorRef manager;
 
+    private int generateFingerCount = 1;
     private static ChordNode node;
     private FingerTableService fingerTableService;
     private ActorRef storageActorRef;
@@ -145,7 +146,7 @@ public class Node extends AbstractActor {
                 .match(FingerTable.GetPredecessorReply.class, getPredecessorReply -> {
                     log.info("FingerTable.GetPredecessorReply: " + getPredecessorReply.getChordNode().getId());
                     fingerTableService.setPredecessor(getPredecessorReply.getChordNode());
-
+                    initialiseFirstFinger();
                     // Now that we have our successor and predecessor set we can generate the finger table
                     generateFingerTable(getCentralNode(getCentralNodeAddress()));
                 })
@@ -199,11 +200,19 @@ public class Node extends AbstractActor {
                     System.out.println("Current finger table after update");
                     fingerTableService.getFingers().forEach(finger -> System.out.println(finger.toString()));
 
-                    if (fingerTableService.getFingers().stream().noneMatch(finger -> finger.getSucc() == null)) {
+                    if (generateFingerCount == ChordStart.m-1) {
+                        //If entire finger table is initialized, print it.
+                        System.out.println("THIS IS HOW MY FINGERTABLE LOOKS LIKE: " + "The size is " + fingerTableService.getFingers().size() + " and should be " + ChordStart.m);
+                        fingerTableService.getFingers().forEach(finger -> System.out.println(finger.toString()));
+
                         // If the entire finger table is initialized we can update other finger tables to let them know I'm a new node in the network!
                         System.out.println("Updating other finger tables!");
 
                         updateOthers();
+                    }
+                    else{
+                        generateFingerCount++;
+                        generateFingerTable(getCentralNode(getCentralNodeAddress()));
                     }
                 })
                 .build();
@@ -294,36 +303,28 @@ public class Node extends AbstractActor {
         }
     }
 
-    private void generateFingerTable(ActorSelection centralNode) {
-        List<Finger> fingerList = new ArrayList<>();
-
-        System.out.println("Building finger table...");
-
+    private void initialiseFirstFinger(){
         long first = fingerTableService.startFinger(node.getId(), 1);
         long second = fingerTableService.startFinger(node.getId(), 2);
         FingerInterval firstInterval = new FingerInterval(first, second);
-        fingerList.add(new Finger(first, firstInterval, fingerTableService.getSuccessor()));
-
-        for (int i = 1; i < ChordStart.m - 1; i++) { // FIXME finger table is too short..
-            long beginFinger = fingerTableService.startFinger(node.getId(), i + 1);
-            long nextFinger = fingerTableService.startFinger(node.getId(), i + 2);
+        fingerTableService.getFingers().add(new Finger(first, firstInterval, fingerTableService.getSuccessor()));
+    }
+    private void generateFingerTable(ActorSelection centralNode) {
+            long beginFinger = fingerTableService.startFinger(node.getId(), generateFingerCount + 1);
+            long nextFinger = fingerTableService.startFinger(node.getId(), generateFingerCount + 2);
             ChordNode currentSuccessor = fingerTableService.getSuccessor(); //getFingers().get(i).getSucc().getId();
 
             FingerInterval interval = fingerTableService.calcInterval(beginFinger, nextFinger);
             if (nextFinger >= node.getId() && nextFinger < currentSuccessor.getId()) {
-                fingerList.add(new Finger(beginFinger, interval, currentSuccessor));
+                fingerTableService.getFingers().add(new Finger(beginFinger, interval, currentSuccessor));
+                getSelf().tell(new FingerTable.GetFingerTableSuccessor(generateFingerCount, beginFinger), getSelf());
             } else {
-                // Ask for successor if not in current interval
-                centralNode.tell(new FingerTable.GetFingerTableSuccessor(i, beginFinger), getSelf());
-
                 // Set empty successor will be handled when we get a message back
-                fingerList.add(new Finger(beginFinger, interval, null));
-            }
-        }
-        fingerTableService.setFingerTable(new org.distributed.systems.chord.model.finger.FingerTable(fingerList, ChordStart.m));
+                fingerTableService.getFingers().add(new Finger(beginFinger, interval, null));
 
-        System.out.println("THIS IS HOW MY FINGERTABLE LOOKS LIKE: " + "The size is " + fingerList.size() + " and should be " + ChordStart.m);
-        fingerList.forEach(finger -> System.out.println(finger.toString()));
+                // Ask for successor if not in current interval
+                centralNode.tell(new FingerTable.GetFingerTableSuccessor(generateFingerCount, beginFinger), getSelf());
+            }
     }
 
     private void updateOthers() {
