@@ -20,7 +20,7 @@ import static akka.pattern.Patterns.ask;
 
 public class ChordStart {
 
-    private static final int STANDARD_TIME_OUT = 1000;
+    public static final int STANDARD_TIME_OUT = 1000;
 
     public static void main(String[] args) {
         IHashUtil hashUtil = new HashUtil();
@@ -91,9 +91,9 @@ public class ChordStart {
         CompletableFuture<Object> valueRequest = ask(node, getValue, Duration.ofMillis(STANDARD_TIME_OUT)).toCompletableFuture();
 
         // Send
-        CompletableFuture<KeyValue.Reply> transformed =
+        CompletableFuture<KeyValue.GetReply> transformed =
                 CompletableFuture.allOf(valueRequest)
-                        .thenApply(v -> (KeyValue.Reply) valueRequest.join());
+                        .thenApply(v -> (KeyValue.GetReply) valueRequest.join());
 
         // Handle response
         transformed.whenComplete((getValueRequest, throwable) -> {

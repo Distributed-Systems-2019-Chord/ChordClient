@@ -8,6 +8,7 @@ import akka.io.Tcp;
 import akka.io.TcpMessage;
 import akka.pattern.Patterns;
 import akka.util.ByteString;
+import org.distributed.systems.ChordStart;
 import org.distributed.systems.chord.messaging.KeyValue;
 import scala.concurrent.Await;
 
@@ -21,7 +22,6 @@ import akka.util.Timeout;
 class MemcachedActor extends AbstractActor {
 
     private final LoggingAdapter log = Logging.getLogger(getContext().getSystem(), this);
-    private static final int STANDARD_TIME_OUT = 1000;
     private String previousTextCommand = "";
     private final ActorRef storageActor;
 
@@ -75,7 +75,7 @@ class MemcachedActor extends AbstractActor {
             System.out.println("Fetching payload");
 
             KeyValue.Get keyValueGetMessage = new KeyValue.Get(key);
-            Timeout timeout = Timeout.create(Duration.ofMillis(STANDARD_TIME_OUT));
+            Timeout timeout = Timeout.create(Duration.ofMillis(ChordStart.STANDARD_TIME_OUT));
             Future<Object> future = Patterns.ask(this.storageActor, keyValueGetMessage, timeout);
             KeyValue.GetReply result = (KeyValue.GetReply) Await.result(future, timeout.duration());
 
@@ -106,7 +106,7 @@ class MemcachedActor extends AbstractActor {
             String hashKey = set_options[1];
             KeyValue.Put putValueMessage = new KeyValue.Put(hashKey, payloadTextLine);
 
-            Timeout timeout = Timeout.create(Duration.ofMillis(STANDARD_TIME_OUT));
+            Timeout timeout = Timeout.create(Duration.ofMillis(ChordStart.STANDARD_TIME_OUT));
             Future<Object> future = Patterns.ask(this.storageActor, putValueMessage, timeout);
             Await.result(future, timeout.duration());
             ByteString resp = ByteString.fromString("STORED\r\n");
