@@ -121,17 +121,6 @@ public class FingerTable {
         }
     }
 
-    public static class FindSuccessor implements Command {
-        private long id;
-
-        public FindSuccessor(long id) {
-            this.id = id;
-        }
-
-        public long getId() {
-            return id;
-        }
-    }
 
     public static class FindSuccessorReply implements Response {
         private final ChordNode successor;
@@ -203,4 +192,144 @@ public class FingerTable {
             return successor;
         }
     }
+
+    // HET BEGIN
+
+    public static class FindSuccessor implements Command{
+
+    }
+
+    public static class FindPredecessor implements Command{
+
+    }
+
+    // MY
+    public static class FindMySuccessor extends FindSuccessor{
+        long id;
+        public FindMySuccessor(long id){
+            this.id = id;
+        }
+        public long getId(){
+            return this.id;
+        }
+    }
+
+    public static class FindMySuccessorReply {
+        ChordNode successor;
+        public FindMySuccessorReply(ChordNode succ){
+            this.successor = succ;
+        }
+        public ChordNode getSuccessor(){
+            return this.successor;
+        }
+    }
+
+    public static class FindMyPredecessor extends FindPredecessor {
+        long id;
+
+        public FindMyPredecessor(long id) {
+            this.id = id;
+        }
+
+        public long getId() {
+            return id;
+        }
+    }
+
+    public static class FindMyPredecessorReply implements Response{
+        ChordNode node;
+
+        public ChordNode getNode() {
+            return node;
+        }
+
+        public FindMyPredecessorReply(ChordNode node) {
+            this.node = node;
+        }
+    }
+
+    //FINGER
+    public static class FindFingerSuccessor extends FindSuccessor{
+        long id;
+
+        public FindFingerSuccessor(long id){
+            this.id = id;
+        }
+        public long getId(){
+            return this.id;
+        }
+    }
+    public static class FindFingerSuccessorReply {
+        ChordNode successor;
+        public FindFingerSuccessorReply(ChordNode succ){
+            this.successor = succ;
+        }
+        public ChordNode getSuccessor(){
+            return this.successor;
+        }
+    }
+    public static class FindFingerPredecessor extends FindPredecessor{
+        long id;
+
+        public FindFingerPredecessor(long id){
+            this.id = id;
+        }
+        public long getId(){
+            return this.id;
+        }
+    }
+
+    public static class FindFingerPredecessorReply implements Response{
+        ChordNode node;
+
+        public ChordNode getNode() {
+            return node;
+        }
+
+        public FindFingerPredecessorReply(ChordNode node) {
+            this.node = node;
+        }
+    }
+    public static class FindSomeSuccessor extends FindSuccessor{
+        long id;
+
+        public FindSomeSuccessor(long id){
+            this.id = id;
+        }
+        public long getId(){
+            return this.id;
+        }
+    }
+    public static class FindSomeSuccessorReply {
+        ChordNode successor;
+        public FindSomeSuccessorReply(ChordNode succ){
+            this.successor = succ;
+        }
+        public ChordNode getSuccessor(){
+            return this.successor;
+        }
+    }
+    public static class FindSomePredecessor extends FindPredecessor{
+        long id;
+
+        public FindSomePredecessor(long id){
+            this.id = id;
+        }
+        public long getId(){
+            return this.id;
+        }
+    }
+
+    public static class FindSomePredecessorReply implements Response{
+        ChordNode node;
+
+        public ChordNode getNode() {
+            return node;
+        }
+
+        public FindSomePredecessorReply(ChordNode node) {
+            this.node = node;
+        }
+    }
+
 }
