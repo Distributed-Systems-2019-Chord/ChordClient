@@ -42,7 +42,7 @@ public class FingerTableService {
 
     public FingerTable initFingerTableCentral(ChordNode centralNode) {
         FingerTable table = new FingerTable(new ArrayList<>(ChordStart.m), ChordStart.m);
-        for (int i = 1; i < ChordStart.m - 1; i++) {
+        for (int i = 1; i <= ChordStart.m; i++) {
             long startFinger = startFinger(centralNode.getId(), i);
             long endFinger = startFinger(centralNode.getId(), i + 1);
             FingerInterval interval = calcInterval(startFinger, endFinger);
