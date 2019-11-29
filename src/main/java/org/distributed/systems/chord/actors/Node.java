@@ -261,14 +261,16 @@ public class Node extends AbstractActor {
 
     private ChordNode closestPrecedingFinger(long id) {
         List<Finger> fingers = fingerTableService.getFingers();
-
+        ChordNode currSucc = null;
         for (int i = ChordStart.m - 1; i > 0; i--) {
 //            // Is in interval?
-            if (fingers.get(i).getInterval().getStartKey() >= id && id < fingers.get(i).getInterval().getEndKey()) {
+//            if (fingers.get(i).getInterval().getStartKey() >= id && id < fingers.get(i).getInterval().getEndKey()) {
+            currSucc = fingers.get(i).getSucc();
+            if(node.getId() < currSucc.getId()  && currSucc.getId() < id){
                 //TODO Check successor != getSelf(); works?
-                if (fingers.get(i).getSucc() != node) {
+                if (currSucc != node) {
                     // Return closest
-                    return fingers.get(i).getSucc();
+                    return currSucc;
                 }
             }
         }
