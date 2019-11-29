@@ -7,6 +7,7 @@ import org.distributed.systems.chord.actors.Node;
 
 public class ChordStart {
 
+    public static final int STANDARD_TIME_OUT = 1000;
     // FIXME 160 according to sha-1 but this is the max_length of a java long..
     public static final int m = 3; // Number of bits in key id's
     public static final long AMOUNT_OF_KEYS = Math.round(Math.pow(2, m));

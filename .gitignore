@@ -1,3 +1,13 @@
+# ignore IDE files
+.idea
+
+# ignore additional files
+.gradle
+bin
+.settings
+.project
+.classpath
+
 # Compiled class file
 *.class
 

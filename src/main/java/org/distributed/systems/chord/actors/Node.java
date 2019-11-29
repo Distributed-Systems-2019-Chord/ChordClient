@@ -1,10 +1,12 @@
 package org.distributed.systems.chord.actors;
 
-import akka.actor.AbstractActor;
-import akka.actor.ActorRef;
-import akka.actor.ActorSelection;
+import akka.actor.*;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
+import akka.io.Tcp;
+import akka.io.Tcp.CommandFailed;
+import akka.io.Tcp.Connected;
+import akka.io.TcpMessage;
 import com.typesafe.config.Config;
 import org.distributed.systems.ChordStart;
 import org.distributed.systems.chord.messaging.FingerTable;
@@ -15,6 +17,11 @@ import org.distributed.systems.chord.model.ChordNode;
 import org.distributed.systems.chord.model.finger.Finger;
 import org.distributed.systems.chord.model.finger.FingerInterval;
 import org.distributed.systems.chord.service.FingerTableService;
+import org.distributed.systems.chord.service.StorageService;
+
+import java.io.Serializable;
+import java.net.InetSocketAddress;
+import java.util.List;
 import org.distributed.systems.chord.util.Util;
 import org.distributed.systems.chord.util.impl.HashUtil;
 
@@ -28,15 +35,24 @@ import java.util.stream.Collectors;
 public class Node extends AbstractActor {
 
     private final LoggingAdapter log = Logging.getLogger(getContext().getSystem(), this);
+    static final int MEMCACHE_MIN_PORT = 11211;
+    static final int MEMCACHE_MAX_PORT = 12235;
+    final ActorRef manager;
 
     private static ChordNode node;
     private FingerTableService fingerTableService;
-    private Map<String, Serializable> valueStore;
+    private ActorRef storageActorRef;
     private Config config = getContext().getSystem().settings().config();
 
     public Node() {
-        this.valueStore = new HashMap<>();
         fingerTableService = new FingerTableService();
+        this.manager = Tcp.get(getContext().getSystem()).manager();
+        this.storageActorRef = getContext().actorOf(Props.create(StorageActor.class));
+
+    }
+
+    public static Props props(ActorRef manager) {
+        return Props.create(Node.class, manager);
     }
 
     @Override
@@ -47,6 +63,7 @@ public class Node extends AbstractActor {
         System.out.println("Starting up with node_id: " + NODE_ID);
 
         node = new ChordNode(NODE_ID, Util.getIp(config), Util.getPort(config));
+        this.createMemCacheTCPSocket();
         joinNetwork();
     }
 
@@ -55,6 +72,31 @@ public class Node extends AbstractActor {
         log.info("Received a message");
 
         return receiveBuilder()
+                .match(Tcp.Bound.class, msg -> {
+                    // This will be called, when the SystemActor bound MemCache interface for the particular node.
+                    manager.tell(msg, getSelf());
+                    System.out.printf("MemCache Interface for node %s listening to %s \n", getSelf().toString(), msg.localAddress().toString());
+                })
+                .match(CommandFailed.class, msg -> {
+                    System.out.println("Command failed");
+                    if (msg.cmd() instanceof Tcp.Bind) {
+                        int triedPort = ((Tcp.Bind) msg.cmd()).localAddress().getPort();
+                        if (triedPort <= Node.MEMCACHE_MAX_PORT) {
+                            System.out.println("Port Binding Failed; Retrying...");
+                            createMemCacheTCPSocket(triedPort + 1);
+                        } else {
+                            System.out.println("Port Binding Failed; Ports for Memcache Interface exhausted");
+                            System.out.println("Shutting down...");
+                            getContext().stop(getSelf());
+                        }
+                    }
+                })
+                .match(Connected.class, conn -> {
+                    System.out.println("MemCache Client connected");
+                    manager.tell(conn, getSelf());
+                    ActorRef memcacheHandler = getContext().actorOf(Props.create(MemcachedActor.class, storageActorRef = this.storageActorRef));
+                    getSender().tell(TcpMessage.register(memcacheHandler), getSelf());
+                })
                 .match(NodeJoinMessage.class, nodeJoinMessage -> {
                     log.info("Msg Received from Node " + getSender().path());
                     //TODO: fingertable atm is not a finger table. Adjust fingertable l8r when we implement fingertable biz logic.
@@ -63,16 +105,10 @@ public class Node extends AbstractActor {
                     String key = putValueMessage.key;
                     Serializable value = putValueMessage.value;
                     log.info("key, value: " + key + " " + value);
-                })
-                .match(KeyValue.Put.class, putValueMessage -> {
-                    String key = putValueMessage.key;
-                    Serializable value = putValueMessage.value;
-                    log.info("Put for key, value: " + key + " " + value);
-                    valueStore.put(key, value);
+                    this.storageActorRef.forward(putValueMessage, getContext());
                 })
                 .match(KeyValue.Get.class, getValueMessage -> {
-                    Serializable val = valueStore.get(getValueMessage.key);
-                    getContext().getSender().tell(new KeyValue.Reply(val), ActorRef.noSender());
+                    this.storageActorRef.forward(getValueMessage, getContext());
                 })
                 .match(FingerTable.Get.class, get -> {
                     log.info("send figner table to new node");
@@ -177,6 +213,20 @@ public class Node extends AbstractActor {
     public void postStop() throws Exception {
         super.postStop();
         log.info("Shutting down...");
+    }
+
+    private void createMemCacheTCPSocket() {
+        createMemCacheTCPSocket(Node.MEMCACHE_MIN_PORT);
+        // TODO: Environment Var Control?
+    }
+
+    private void createMemCacheTCPSocket(int port) {
+
+        final ActorRef tcp = Tcp.get(getContext().getSystem()).manager();
+        // TODO: We need to expose this port to the outer world
+        InetSocketAddress tcp_socked = new InetSocketAddress("localhost", port);
+        Tcp.Command tcpmsg = TcpMessage.bind(getSelf(), tcp_socked, 100);
+        tcp.tell(tcpmsg, getSelf());
     }
 
     private ChordNode findSuccessor(long id) {
