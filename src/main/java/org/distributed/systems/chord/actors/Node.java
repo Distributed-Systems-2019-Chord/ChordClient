@@ -224,7 +224,15 @@ public class Node extends AbstractActor {
 
         final ActorRef tcp = Tcp.get(getContext().getSystem()).manager();
         // TODO: We need to expose this port to the outer world
-        InetSocketAddress tcp_socked = new InetSocketAddress("localhost", port);
+        // Get possible hostname:
+        String hostname = "localhost";
+
+        if (System.getenv("HOSTNAME") != null) {
+            hostname = System.getenv("HOSTNAME");
+        }
+
+
+        InetSocketAddress tcp_socked = new InetSocketAddress(hostname, port);
         Tcp.Command tcpmsg = TcpMessage.bind(getSelf(), tcp_socked, 100);
         tcp.tell(tcpmsg, getSelf());
     }
@@ -277,7 +285,12 @@ public class Node extends AbstractActor {
     }
 
     private void joinNetwork() {
-        final String nodeType = config.getString("myapp.nodeType");
+        String nodeType = config.getString("myapp.nodeType");
+        
+        if (System.getenv("CHORD_NODE_TYPE") != null) {
+            nodeType = System.getenv("CHORD_NODE_TYPE");
+        }
+
         log.info("DEBUG -- nodetype: " + nodeType);
         if (nodeType.equals("regular")) {
             ActorSelection centralNode = getCentralNode(getCentralNodeAddress());
@@ -349,7 +362,12 @@ public class Node extends AbstractActor {
     }
 
     private String getCentralNodeAddress() {
-        final String centralEntityAddress = config.getString("myapp.centralEntityAddress");
+        String centralEntityAddress = config.getString("myapp.centralEntityAddress");
+        
+        if (System.getenv("CHORD_CENTRAL_NODE") != null) {
+            centralEntityAddress = System.getenv("CHORD_CENTRAL_NODE");
+        }
+
         return "akka://ChordNetwork@" + centralEntityAddress + "/user/ChordActor0";
     }
 }

@@ -5,6 +5,8 @@ import akka.actor.Props;
 import com.typesafe.config.Config;
 import org.distributed.systems.chord.actors.Node;
 
+import java.util.Map;
+
 public class ChordStart {
 
     public static final int STANDARD_TIME_OUT = 1000;
@@ -17,43 +19,23 @@ public class ChordStart {
         ActorSystem system = ActorSystem.create("ChordNetwork"); // Setup actor system
 
         Config config = system.settings().config();
-        final String nodeType = config.getString("myapp.nodeType");
+        
+        String nodeType = config.getString("myapp.nodeType");
+        if (System.getenv("CHORD_NODE_TYPE") != null) {
+            nodeType = System.getenv("CHORD_NODE_TYPE");
+        }
+
+        System.out.println("\nRead All Variables:-\n");
+
+        Map <String, String> map = System.getenv();
+        for (Map.Entry <String, String> entry: map.entrySet()) {
+            System.out.println("Variable Name:- " + entry.getKey() + " Value:- " + entry.getValue());
+        }
 
         if (nodeType.equals("central")) {
             system.actorOf(Props.create(Node.class), "ChordActor0");
         } else {
             system.actorOf(Props.create(Node.class));
         }
-
-
-//        String hashId = hashUtil.hash(String.valueOf(startNode.getNodeId()));
-//        String hashKey = hashUtil.hash(String.valueOf(startNode.getNodeId()));
-//
-//        // Create (tell) messages
-//        NodeJoinMessage joinMessage = new NodeJoinMessage(startNode);
-//        NodeLeaveMessage leaveMessage = new NodeLeaveMessage(startNode);
-//
-//        FingerTable.Get getFingerTable = new FingerTable.Get(hashId);
-//
-//        KeyValue.Put putValueMessage = new KeyValue.Put(hashKey, "This is some kind of test value");
-//
-//        // Send messages to the node
-//        askForFingerTable(node, getFingerTable);
-//
-//        // Node is joining..
-//        node.tell(joinMessage, ActorRef.noSender());
-//        askForFingerTable(node, getFingerTable);
-//
-//        // Add en retrieve value
-//        node.tell(putValueMessage, ActorRef.noSender());
-//        askForValue(node, new KeyValue.Get(hashKey));
-//
-//        // Node is leaving after sometime...
-//        node.tell(leaveMessage, ActorRef.noSender());
-//        askForFingerTable(node, getFingerTable);
-
-//        system.stop(node); // Quit node
-
-//        system.terminate(); // Terminate application
     }
 }
