@@ -29,7 +29,7 @@ public class HashUtil implements IHashUtil {
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }
-        return sha1 % ChordStart.m;
+        return sha1 % ChordStart.AMOUNT_OF_KEYS;
     }
 
     private static String byteToHex(final byte[] hash) {

@@ -20,7 +20,7 @@ public class ChordStart {
         final String nodeType = config.getString("myapp.nodeType");
 
         if (nodeType.equals("central")) {
-            system.actorOf(Props.create(Node.class), "ChordActor0");
+            system.actorOf(Props.create(Node.class), "ChordActor");
         } else {
             system.actorOf(Props.create(Node.class));
         }
