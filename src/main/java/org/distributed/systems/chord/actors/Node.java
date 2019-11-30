@@ -69,6 +69,20 @@ public class Node extends AbstractActor {
         joinNetwork();
     }
 
+    private void createMemCacheTCPSocket() {
+        createMemCacheTCPSocket(Node.MEMCACHE_MIN_PORT);
+        // TODO: Environment Var Control?
+    }
+
+    private void createMemCacheTCPSocket(int port) {
+
+        final ActorRef tcp = Tcp.get(getContext().getSystem()).manager();
+        // TODO: We need to expose this port to the outer world
+        InetSocketAddress tcp_socked = new InetSocketAddress("localhost", port);
+        Tcp.Command tcpmsg = TcpMessage.bind(getSelf(), tcp_socked, 100);
+        tcp.tell(tcpmsg, getSelf());
+    }
+
     @Override
     public Receive createReceive() {
         log.info("Received a message");
@@ -138,10 +152,6 @@ public class Node extends AbstractActor {
                 .match(FindSuccessorReply.class, findSuccessorReply -> {
 //                    log.info("FindSuccessorReply");
                     // Reply on the DirectGetSuccessor message (that is called after the findPredecessor)
-//                    fingerTableService.setSuccessor(findSuccessorReply.getNode());
-
-                    //FIXME doesn't work yet... Update its successor
-//                    Util.getActorRef(getContext(), findSuccessorReply.getNode()).tell(new SetSuccessor(node), getSelf());
 
                     // The successor and predecessor of this node are now known
                     initialiseFirstFinger(findSuccessorReply.getNode());
@@ -166,20 +176,21 @@ public class Node extends AbstractActor {
                         loopAndFixFingers();
                     }
 
-                    // FIXME!!!!!
+                    // FIXME?
                     // Update others phase. This message should be send by the original sender
-                    else if (findPredecessorReply.getIndex() != FindPredecessorReply.UNSET) { // is not unset
+                    else if (findPredecessorReply.getIndex() != FindPredecessorReply.UNSET) { // index (only given by update finger table) is not unset
 //                        log.info("UpdateFinger is this the joining node?");
                         ActorSelection toUpdatePredRef = Util.getActorRef(getContext(), findPredecessorReply.getNode());
                         findPredecessorReply.getOriginalSender().tell(new YouShouldUpdateThisNode(toUpdatePredRef, findPredecessorReply.getIndex()), getSelf());
-//                        toUpdatePredRef.tell(new UpdateFinger(findPredecessorReply.getIndex(), node), getSelf());
                     }
                     // We are in the chain of asking for predecessors
                     // I shouldn't send this message to myself
                     else if (getSelf() != findPredecessorReply.getOriginalSender()) {
 //                        log.info("chain of asking for predecessor?");
+                        // TODO clean up we don't chain the predecessor reply, we send it directly to the original requester.
                         findPredecessorReply.getOriginalSender().tell(new FindPredecessorReply(findPredecessorReply.getNode(), findPredecessorReply.getIndex(), findPredecessorReply.getOriginalSender()), getSelf());
                     } else {
+                        // TODO clean up, this case shouldn't happen (I think)
                         log.info("I'm just gonna tell some node he should update its finger table");
                         Util.getActorRef(getContext(), findPredecessorReply.getNode()).tell(new UpdateFinger(findPredecessorReply.getIndex(), node), getSelf());
                         log.info("My finger table should be complete, and I'm the node that initiated a call.");
@@ -199,7 +210,7 @@ public class Node extends AbstractActor {
                     directGetSuccessor.getOriginalSender().tell(new FindSuccessorReply(fingerTableService.getSuccessor()), getSelf());
                 })
                 .match(YouShouldUpdateThisNode.class, youShouldUpdateThisNode -> {
-                    // FIXME Broken somehow?
+                    // FIXME Broken somehow? this should be the toUpdatePredRef (in the first case this is central)
                     getCentralNode(getCentralNodeAddress()).tell(new UpdateFinger(youShouldUpdateThisNode.getIndex(), node), getSelf());
 //                    youShouldUpdateThisNode.getToUpdatePredRef().tell(new UpdateFinger(youShouldUpdateThisNode.getIndex(), node), getSelf());
                 })
@@ -323,7 +334,7 @@ public class Node extends AbstractActor {
     private void updateOthers() {
 //        log.info("I'm calling this and I should be the joining node: " + getSelf());
 
-        for (int i = 1; i < ChordStart.m; i++) {
+        for (int i = 0; i < ChordStart.m; i++) { // FIXME according to Chord we should start at 1...
             tellFindPredecessor(getFingerWhoseIthFingerMightBeNode(i), i, getSelf());
         }
     }
@@ -333,7 +344,8 @@ public class Node extends AbstractActor {
     }
 
     private void updateFingerTable(ChordNode inNode, int index) {
-        if (between(node.getId(), fingerTableService.getFingers().get(index).getSucc().getId(), inNode.getId())) {
+        // In interval up to successor but not including the successor
+        if (between(node.getId(), fingerTableService.getFingers().get(index).getSucc().getId() - 1, inNode.getId())) {
             // Update my finger table
             fingerTableService.getFingers().get(index).setSucc(inNode);
 
@@ -353,23 +365,10 @@ public class Node extends AbstractActor {
         log.info("Shutting down...");
     }
 
-    // Util methods
+    // Util methods from here on
+
     private boolean isFingerTableNotComplete() {
         return fingerTableService.getFingers().stream().anyMatch(finger -> finger.getSucc() == null);
-    }
-
-    private void createMemCacheTCPSocket() {
-        createMemCacheTCPSocket(Node.MEMCACHE_MIN_PORT);
-        // TODO: Environment Var Control?
-    }
-
-    private void createMemCacheTCPSocket(int port) {
-
-        final ActorRef tcp = Tcp.get(getContext().getSystem()).manager();
-        // TODO: We need to expose this port to the outer world
-        InetSocketAddress tcp_socked = new InetSocketAddress("localhost", port);
-        Tcp.Command tcpmsg = TcpMessage.bind(getSelf(), tcp_socked, 100);
-        tcp.tell(tcpmsg, getSelf());
     }
 
     private void printFingerTable() {
