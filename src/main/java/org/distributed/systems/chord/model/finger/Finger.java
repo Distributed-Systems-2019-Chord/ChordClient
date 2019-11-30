@@ -35,6 +35,10 @@ public class Finger {
 
     @Override
     public String toString() {
-        return start + "|" + interval.getStartKey() + "-" + interval.getEndKey() + "|" + succ;
+        if (succ != null) {
+            return start + "|" + interval.getStartKey() + "-" + interval.getEndKey() + "|" + succ.getId();
+        } else {
+            return start + "|" + interval.getStartKey() + "-" + interval.getEndKey() + "|" + "NULL - not set";
+        }
     }
 }
