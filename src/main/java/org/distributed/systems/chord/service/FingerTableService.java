@@ -8,12 +8,11 @@ import org.distributed.systems.chord.model.finger.FingerTable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class FingerTableService {
 
     private FingerTable fingerTable;
-
-    private ChordNode successor;
 
     private ChordNode predecessor;
 
@@ -65,11 +64,15 @@ public class FingerTableService {
     }
 
     public void setSuccessor(ChordNode successor) {
-        this.successor = successor;
+        assert !fingerTable.getFingerList().isEmpty();
+        fingerTable.getFingerList().get(0).setSucc(successor);
     }
 
     public ChordNode getSuccessor() {
-        return successor;
+        if (fingerTable.getFingerList().isEmpty()) {
+            return null;
+        }
+        return fingerTable.getFingerList().get(0).getSucc();
     }
 
     public void setPredecessor(ChordNode predecessor) {
@@ -78,5 +81,15 @@ public class FingerTableService {
 
     public ChordNode getPredecessor() {
         return predecessor;
+    }
+
+    @Override
+    public String toString() {
+        return "\n"
+                + "Predecessor: " + predecessor.getId() + "\n"
+                + "Successor: " + getSuccessor().getId() + "\n"
+                + "FINGER TABLE:\n"
+                + getFingers().stream().map(Finger::toString)
+                .map(s -> "\t" + s + "\n").collect(Collectors.joining());
     }
 }
