@@ -22,7 +22,7 @@ public class ChordStart {
         if (nodeType.equals("central")) {
             system.actorOf(Props.create(Node.class), "ChordActor");
         } else {
-            system.actorOf(Props.create(Node.class));
+            system.actorOf(Props.create(Node.class), "ChordActor");
         }
 
 
