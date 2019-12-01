@@ -226,8 +226,10 @@ public class Node extends AbstractActor {
 
     private void fixLocalPredecessorAndSuccessor(FindPredecessorReply findPredecessorReply) {
         fingerTableService.setPredecessor(findPredecessorReply.getNode());
-        Util.getActorRef(getContext(), findPredecessorReply.getNode()).tell(new SetPredecessor(node), getSelf());
-        Util.getActorRef(getContext(), findPredecessorReply.getNode()).tell(new DirectGetSuccessor(getSelf()), getSelf());
+        ActorSelection predRef = Util.getActorRef(getContext(), findPredecessorReply.getNode());
+        // FIXME!! I should tell my predecessor that I'm its successor and
+        predRef.tell(new SetPredecessor(node), getSelf());
+        predRef.tell(new DirectGetSuccessor(getSelf()), getSelf());
     }
 
     private void initialiseFirstFinger(ChordNode successor) {
