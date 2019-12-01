@@ -124,14 +124,10 @@ public class Node extends AbstractActor {
                 })
 
 
-                // FIXME From here
                 .match(FindSuccessor.class, findSuccessor -> {
                     log.info("FindSuccessor");
+                    // When you get a message from yourself
                     if (getSender().equals(getSelf())) {
-//                        log.info("I was the sender, I will solve it myself");
-//                        log.info("I am in init table phase");
-
-
                         // I will set my successor
                         fingerTableService.getFingers().get(generateFingerCount).setSucc(fingerTableService.getSuccessor());
 
@@ -147,11 +143,10 @@ public class Node extends AbstractActor {
 
                     // Find predecessor --> in reply send FindSuccessorReply
                     tellFindPredecessor(findSuccessor.getId(), getSender());
-
                 })
                 .match(FindSuccessorReply.class, findSuccessorReply -> {
-//                    log.info("FindSuccessorReply");
                     // Reply on the DirectGetSuccessor message (that is called after the findPredecessor)
+//                    log.info("FindSuccessorReply");
 
                     // The successor and predecessor of this node are now known
                     initialiseFirstFinger(findSuccessorReply.getNode());
@@ -162,50 +157,44 @@ public class Node extends AbstractActor {
                     tellFindPredecessor(findPredecessor.getId(), findPredecessor.getIndex(), getSelf());
                 })
                 .match(FindPredecessorReply.class, findPredecessorReply -> {
-//                    log.info("FindPredecessorReply");
+                    log.info("FindPredecessorReply");
                     // Init finger table phase -> set first
                     if (fingerTableService.getFingers().isEmpty()) {
-//                        log.info("Init finger table phase ");
-                        fingerTableService.setPredecessor(findPredecessorReply.getNode());
-                        Util.getActorRef(getContext(), findPredecessorReply.getNode()).tell(new SetPredecessor(node), getSelf());
-                        Util.getActorRef(getContext(), findPredecessorReply.getNode()).tell(new DirectGetSuccessor(getSelf()), getSelf());
+                        /*
+                        finger[1].node = n'.find_successor(finger[1].start);
+                        predecessor = successor.predecessor;
+                        successor predecessor;
+                         */
+                        fixLocalPredecessorAndSuccessor(findPredecessorReply);
                     }
 
                     // Init finger table phase -> finger table is not complete
                     else if (isFingerTableNotComplete()) {
+                        /*
+                        for i = 1 to m
+                            if
+                            else
+                         */
                         loopAndFixFingers();
                     }
 
-                    // FIXME?
                     // Update others phase. This message should be send by the original sender
-                    else if (findPredecessorReply.getIndex() != FindPredecessorReply.UNSET) { // index (only given by update finger table) is not unset
-//                        log.info("UpdateFinger is this the joining node?");
-                        ActorSelection toUpdatePredRef = Util.getActorRef(getContext(), findPredecessorReply.getNode());
-                        findPredecessorReply.getOriginalSender().tell(new YouShouldUpdateThisNode(toUpdatePredRef, findPredecessorReply.getIndex()), getSelf());
-                    }
-                    // We are in the chain of asking for predecessors
-                    // I shouldn't send this message to myself
-                    else if (getSelf() != findPredecessorReply.getOriginalSender()) {
-//                        log.info("chain of asking for predecessor?");
-                        // TODO clean up we don't chain the predecessor reply, we send it directly to the original requester.
-                        findPredecessorReply.getOriginalSender().tell(new FindPredecessorReply(findPredecessorReply.getNode(), findPredecessorReply.getIndex(), findPredecessorReply.getOriginalSender()), getSelf());
-                    } else {
-                        // TODO clean up, this case shouldn't happen (I think)
-                        log.info("I'm just gonna tell some node he should update its finger table");
-                        Util.getActorRef(getContext(), findPredecessorReply.getNode()).tell(new UpdateFinger(findPredecessorReply.getIndex(), node), getSelf());
-                        log.info("My finger table should be complete, and I'm the node that initiated a call.");
-                        printFingerTable();
-
-                        log.info("What is this? " + findPredecessorReply.getIndex() + " " + findPredecessorReply.getNode().getId());
+                    // index (only given by update finger table) is not unset
+                    else if (findPredecessorReply.getIndex() != FindPredecessorReply.UNSET) {
+                        tellOthersToUpdate(findPredecessorReply);
                     }
 
+                    // We are not in a phase that should happen.
+                    else {
+                        log.error("This shouldn't happen");
+                    }
                 })
                 .match(SetPredecessor.class, setPredecessor -> {
-                    log.info("I have a new predecessor");
+//                    log.info("I have a new predecessor");
                     fingerTableService.setPredecessor(setPredecessor.getNode());
                 })
                 .match(DirectGetSuccessor.class, directGetSuccessor -> {
-                    log.info("DirectGetSuccessor");
+//                    log.info("DirectGetSuccessor");
                     // Tell joining node that this is the successor he is searching for
                     directGetSuccessor.getOriginalSender().tell(new FindSuccessorReply(fingerTableService.getSuccessor()), getSelf());
                 })
@@ -215,7 +204,7 @@ public class Node extends AbstractActor {
 //                    youShouldUpdateThisNode.getToUpdatePredRef().tell(new UpdateFinger(youShouldUpdateThisNode.getIndex(), node), getSelf());
                 })
                 .match(UpdateFinger.class, updateFinger -> {
-                    log.info("UpdateFinger");
+//                    log.info("UpdateFinger");
                     updateFingerTable(updateFinger.getNode(), updateFinger.getIndex());
                 })
                 .build();
@@ -237,13 +226,18 @@ public class Node extends AbstractActor {
         }
     }
 
+    private void fixLocalPredecessorAndSuccessor(FindPredecessorReply findPredecessorReply) {
+        fingerTableService.setPredecessor(findPredecessorReply.getNode());
+        Util.getActorRef(getContext(), findPredecessorReply.getNode()).tell(new SetPredecessor(node), getSelf());
+        Util.getActorRef(getContext(), findPredecessorReply.getNode()).tell(new DirectGetSuccessor(getSelf()), getSelf());
+    }
+
     private void initialiseFirstFinger(ChordNode successor) {
         long first = fingerTableService.startFinger(node.getId(), 1);
         long second = fingerTableService.startFinger(node.getId(), 2);
         FingerInterval firstInterval = new FingerInterval(first, second);
         fingerTableService.getFingers().add(new Finger(first, firstInterval, successor));
     }
-
 
     private void generateFingerTable(ActorSelection centralNode) {
         long beginFinger = fingerTableService.startFinger(node.getId(), generateFingerCount + 1);
@@ -279,6 +273,11 @@ public class Node extends AbstractActor {
 
             updateOthers();
         }
+    }
+
+    private void tellOthersToUpdate(FindPredecessorReply findPredecessorReply) {
+        ActorSelection toUpdatePredRef = Util.getActorRef(getContext(), findPredecessorReply.getNode());
+        findPredecessorReply.getOriginalSender().tell(new YouShouldUpdateThisNode(toUpdatePredRef, findPredecessorReply.getIndex()), getSelf());
     }
 
     private boolean between(long beginKey, long endKey, long id) {
@@ -351,6 +350,8 @@ public class Node extends AbstractActor {
 
             log.info("My finger table has been updated");
 
+
+            //FIXME This actor ref is broken 127.0.0.1:0 <-- because ip and port aren't specified on start up
             ActorSelection actorRef = Util.getActorRef(getContext(), fingerTableService.getPredecessor());
             actorRef.tell(new UpdateFinger(index, node), getSelf());
         } else {
