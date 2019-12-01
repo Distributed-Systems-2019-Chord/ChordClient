@@ -178,7 +178,7 @@ public class Node extends AbstractActor {
                         loopAndFixFingers();
                     }
 
-                    // Update others phase. This message should be send by the original sender
+                    // Update others phase. The update message should be send by the original sender
                     // index (only given by update finger table) is not unset
                     else if (findPredecessorReply.getIndex() != FindPredecessorReply.UNSET) {
                         tellOthersToUpdate(findPredecessorReply);
@@ -199,9 +199,7 @@ public class Node extends AbstractActor {
                     directGetSuccessor.getOriginalSender().tell(new FindSuccessorReply(fingerTableService.getSuccessor()), getSelf());
                 })
                 .match(YouShouldUpdateThisNode.class, youShouldUpdateThisNode -> {
-                    // FIXME Broken somehow? this should be the toUpdatePredRef (in the first case this is central)
-                    getCentralNode(getCentralNodeAddress()).tell(new UpdateFinger(youShouldUpdateThisNode.getIndex(), node), getSelf());
-//                    youShouldUpdateThisNode.getToUpdatePredRef().tell(new UpdateFinger(youShouldUpdateThisNode.getIndex(), node), getSelf());
+                    youShouldUpdateThisNode.getToUpdatePredRef().tell(new UpdateFinger(youShouldUpdateThisNode.getIndex(), node), getSelf());
                 })
                 .match(UpdateFinger.class, updateFinger -> {
 //                    log.info("UpdateFinger");
@@ -302,11 +300,11 @@ public class Node extends AbstractActor {
             ActorSelection closestPredNode = Util.getActorRef(getContext(), predecessor);
 
             // Tell him to return his predecessor
-            closestPredNode.tell(new FindPredecessor(id, index, originalSender), getSelf()); //TODO check probably also broken..
+            closestPredNode.tell(new FindPredecessor(id, index, originalSender), getSelf());
 //            closestPredNode.forward(new FindPredecessor(id, index), getContext());
         } else {
-            // If I'm the node return my predecessor to the original sender
-            originalSender.tell(new FindPredecessorReply(fingerTableService.getPredecessor(), index, getSender()), getSelf());
+            // If I'm the node return me to the original sender
+            originalSender.tell(new FindPredecessorReply(node, index, getSender()), getSelf());
         }
     }
 
@@ -314,12 +312,11 @@ public class Node extends AbstractActor {
         List<Finger> fingers = fingerTableService.getFingers();
         ChordNode currSucc = null;
         for (int i = ChordStart.m - 1; i > 0; i--) {
-//            // Is in interval?
+
+            // Is in interval?
             if (between(fingers.get(i).getInterval().getStartKey(), fingers.get(i).getInterval().getEndKey() - 1, id)) {
-//            if (fingers.get(i).getInterval().getStartKey() >= id && id < fingers.get(i).getInterval().getEndKey()) {
+
                 currSucc = fingers.get(i).getSucc();
-//            if (node.getId() < currSucc.getId() && currSucc.getId() < id) {
-                //TODO Check successor != getSelf(); works?
                 if (currSucc != node) {
                     // Return closest
                     return currSucc;
@@ -331,15 +328,13 @@ public class Node extends AbstractActor {
     }
 
     private void updateOthers() {
-//        log.info("I'm calling this and I should be the joining node: " + getSelf());
-
         for (int i = 0; i < ChordStart.m; i++) { // FIXME according to Chord we should start at 1...
             tellFindPredecessor(getFingerWhoseIthFingerMightBeNode(i), i, getSelf());
         }
     }
 
     private long getFingerWhoseIthFingerMightBeNode(int i) {
-        return (long) (node.getId() - Math.pow(2, (i - 1)));
+        return (long) (node.getId() - Math.pow(2, (i - 1))); //FIXME 0-1???
     }
 
     private void updateFingerTable(ChordNode inNode, int index) {
@@ -350,8 +345,6 @@ public class Node extends AbstractActor {
 
             log.info("My finger table has been updated");
 
-
-            //FIXME This actor ref is broken 127.0.0.1:0 <-- because ip and port aren't specified on start up
             ActorSelection actorRef = Util.getActorRef(getContext(), fingerTableService.getPredecessor());
             actorRef.tell(new UpdateFinger(index, node), getSelf());
         } else {
