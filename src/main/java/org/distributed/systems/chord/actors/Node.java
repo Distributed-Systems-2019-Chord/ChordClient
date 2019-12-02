@@ -340,6 +340,12 @@ public class Node extends AbstractActor {
             return true; // There is just one node
         }
     }
+
+    //Send a stabilize message to your current successor.
+    private void stabilize(){
+        Util.getActorRef(getContext(),fingerTableService.getSuccessor()).tell(new Stabilize(),getSelf());
+    }
+    
     //Pick a random finger table entry to refresh and send a FixFingers command to yourself.
     private void fixFingers(){
         Random r = new Random();
