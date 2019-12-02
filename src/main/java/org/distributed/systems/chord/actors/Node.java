@@ -147,6 +147,8 @@ public class Node extends AbstractActor {
                     // Reply on the DirectGetSuccessor message (that is called after the findPredecessor)
 //                    log.info("FindSuccessorReply");
 
+                    Util.getActorRef(getContext(), findSuccessorReply.getNode()).tell(new SetPredecessor(node), getSelf());
+
                     // The successor and predecessor of this node are now known
                     initialiseFirstFinger(findSuccessorReply.getNode());
                     generateFingerTable(getCentralNode(getCentralNodeAddress()));
@@ -189,7 +191,7 @@ public class Node extends AbstractActor {
                     }
                 })
                 .match(SetPredecessor.class, setPredecessor -> {
-//                    log.info("I have a new predecessor");
+                    log.info("I have a new predecessor: " + setPredecessor.getNode().getId());
                     fingerTableService.setPredecessor(setPredecessor.getNode());
                 })
                 .match(DirectGetSuccessor.class, directGetSuccessor -> {
@@ -255,9 +257,12 @@ public class Node extends AbstractActor {
     private void fixLocalPredecessorAndSuccessor(FindPredecessorReply findPredecessorReply) {
         fingerTableService.setPredecessor(findPredecessorReply.getNode());
         ActorSelection predRef = Util.getActorRef(getContext(), findPredecessorReply.getNode());
-        // FIXME!! I should tell my predecessor that I'm its successor and
-        predRef.tell(new SetPredecessor(node), getSelf());
+
         predRef.tell(new DirectGetSuccessor(getSelf()), getSelf());
+
+        // mySuccessor = predRef.getSuccessor
+
+        // predRef.predecessor = node
     }
 
     private void initialiseFirstFinger(ChordNode successor) {
@@ -305,14 +310,31 @@ public class Node extends AbstractActor {
 
     private void tellOthersToUpdate(FindPredecessorReply findPredecessorReply) {
         ActorSelection toUpdatePredRef = Util.getActorRef(getContext(), findPredecessorReply.getNode());
+        log.info("Predecessor: " + findPredecessorReply.getNode().getId() + " sending this reference back to the joining node, so that he can instruct the predecessor to update with the joining node.");
         findPredecessorReply.getOriginalSender().tell(new YouShouldUpdateThisNode(toUpdatePredRef, findPredecessorReply.getIndex()), getSelf());
     }
 
-    private boolean between(long beginKey, long endKey, long id) {
+    private boolean between(long beginKey, boolean includingLowerBound, long endKey, boolean includingUpperBound, long id) {
         if (beginKey > endKey) {
-            return !(id <= beginKey && id > endKey);
+            if (includingLowerBound && includingUpperBound) {
+                return !(id < beginKey && id > endKey);
+            } else if (includingLowerBound) {
+                return !(id < beginKey && id >= endKey);
+            } else if (includingUpperBound) {
+                return !(id <= beginKey && id > endKey);
+            } else {
+                return !(id <= beginKey && id >= endKey);
+            }
         } else if (endKey > beginKey) {
-            return (id > beginKey && id <= endKey);
+            if (includingLowerBound && includingUpperBound) {
+                return (id >= beginKey && id <= endKey);
+            } else if (includingLowerBound) {
+                return (id >= beginKey && id < endKey);
+            } else if (includingUpperBound) {
+                return (id > beginKey && id <= endKey);
+            } else {
+                return (id > beginKey && id < endKey);
+            }
         } else {
             return true; // There is just one node
         }
@@ -358,16 +380,20 @@ public class Node extends AbstractActor {
 
     private void tellFindPredecessor(long id, int index, ActorRef originalSender) {
         // If not in my interval
-        if (!between(node.getId(), fingerTableService.getSuccessor().getId(), id)) {
+        if (!between(node.getId(), false, fingerTableService.getSuccessor().getId(), true, id)) {
+            log.info(id + "not in my interval");
             // Find closest preceding finger in my finger table
             ChordNode predecessor = closestPrecedingFinger(id);
+            log.info(predecessor.getId() + " is the closestPrecedingFinger");
             ActorSelection closestPredNode = Util.getActorRef(getContext(), predecessor);
 
             // Tell him to return his predecessor
+            log.info("Telling the closestPrecedingFinger to find predecessor: " + id + " index was: " + index);
             closestPredNode.tell(new FindPredecessor(id, index, originalSender), getSelf());
 //            closestPredNode.forward(new FindPredecessor(id, index), getContext());
         } else {
             // If I'm the node return me to the original sender
+            log.info("I'm the predecessor of " + id + " telling this to " + originalSender.toString());
             originalSender.tell(new FindPredecessorReply(node, index, getSender()), getSelf());
         }
     }
@@ -375,12 +401,13 @@ public class Node extends AbstractActor {
     private ChordNode closestPrecedingFinger(long id) {
         List<Finger> fingers = fingerTableService.getFingers();
         ChordNode currSucc = null;
-        for (int i = ChordStart.m - 1; i > 0; i--) {
+        for (int i = ChordStart.m; i >= 1; i--) {
 
             // Is in interval?
-            if (between(fingers.get(i).getInterval().getStartKey(), fingers.get(i).getInterval().getEndKey() - 1, id)) {
+            if (between(node.getId(), false, id, false, fingerTableService.getFingers().get(i - 1).getSucc().getId())) {
+//            if (between(fingers.get(i - 1).getInterval().getStartKey() + 1, fingers.get(i - 1).getInterval().getEndKey() - 1, id)) {
 
-                currSucc = fingers.get(i).getSucc();
+                currSucc = fingers.get(i - 1).getSucc();
                 if (currSucc != node) {
                     // Return closest
                     return currSucc;
@@ -392,20 +419,21 @@ public class Node extends AbstractActor {
     }
 
     private void updateOthers() {
-        for (int i = 0; i < ChordStart.m; i++) { // FIXME according to Chord we should start at 1...
+        for (int i = 1; i <= ChordStart.m; i++) {
             tellFindPredecessor(getFingerWhoseIthFingerMightBeNode(i), i, getSelf());
         }
     }
 
     private long getFingerWhoseIthFingerMightBeNode(int i) {
-        return (long) (node.getId() - Math.pow(2, (i - 1))); //FIXME 0-1???
+        return Math.floorMod((long) (node.getId() - Math.pow(2, (i - 1))), ChordStart.AMOUNT_OF_KEYS);
     }
 
     private void updateFingerTable(ChordNode inNode, int index) {
         // In interval up to successor but not including the successor
-        if (between(node.getId(), fingerTableService.getFingers().get(index).getSucc().getId() - 1, inNode.getId())) {
+        int adjustedIndex = index - 1;
+        if (between(node.getId(), true, fingerTableService.getFingers().get(adjustedIndex).getSucc().getId(), false, inNode.getId())) {
             // Update my finger table
-            fingerTableService.getFingers().get(index).setSucc(inNode);
+            fingerTableService.getFingers().get(adjustedIndex).setSucc(inNode);
 
             log.info("My finger table has been updated");
 
