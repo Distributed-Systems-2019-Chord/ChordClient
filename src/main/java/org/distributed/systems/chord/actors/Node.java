@@ -23,6 +23,7 @@ import org.distributed.systems.chord.util.impl.HashUtil;
 import java.io.Serializable;
 import java.net.InetSocketAddress;
 import java.util.List;
+import java.util.Random;
 
 public class Node extends AbstractActor {
 
@@ -122,8 +123,6 @@ public class Node extends AbstractActor {
                 .match(KeyValue.Get.class, getValueMessage -> {
                     this.storageActorRef.forward(getValueMessage, getContext());
                 })
-
-
                 .match(FindSuccessor.class, findSuccessor -> {
                     log.info("FindSuccessor");
                     // When you get a message from yourself
@@ -207,6 +206,36 @@ public class Node extends AbstractActor {
 //                    log.info("UpdateFinger");
                     updateFingerTable(updateFinger.getNode(), updateFinger.getIndex());
                 })
+                //Send your predecessor upon a stabilize message from another node.
+                .match(Stabilize.class, stabilize -> {
+                    getSender().tell(new StabilizeReply(this.fingerTableService.getPredecessor()),getSelf());
+                })
+                //Set your new successor if your old successor has a new predecessor and notify your new successor that
+                //you might be it's predecessor.
+                .match(StabilizeReply.class, stabilizeReply -> {
+                    ChordNode x = stabilizeReply.getPredecessor();
+                    if(between(node.getId(),false,this.fingerTableService.getSuccessor().getId(),false,x.getId())){
+                        this.fingerTableService.setSuccessor(x);
+                    }
+                    Util.getActorRef(getContext(),this.fingerTableService.getSuccessor()).tell(new Notify(this.node),getSelf());
+                })
+                //If you get notified of a possible (new) predecessor, check if this is the case and set it.
+                .match(Notify.class, notify -> {
+                    ChordNode possiblePredecessor = notify.getNode();
+                    if(this.fingerTableService.getPredecessor()== null){
+                        this.fingerTableService.setPredecessor(possiblePredecessor);
+                    }
+                    else if(between(fingerTableService.getPredecessor().getId(),false,
+                            this.node.getId(),false,possiblePredecessor.getId())){
+                        this.fingerTableService.setPredecessor(possiblePredecessor);
+                    }
+                })
+                .match(FixFingers.class,
+                        this::fixFingersPredecessor
+                )
+                .match(FixFingersReply.class,
+                        this::handleFixFingersReply
+                )
                 .build();
     }
 
@@ -303,6 +332,47 @@ public class Node extends AbstractActor {
             }
         } else {
             return true; // There is just one node
+        }
+    }
+
+    //Send a stabilize message to your current successor.
+    private void stabilize(){
+        Util.getActorRef(getContext(),fingerTableService.getSuccessor()).tell(new Stabilize(),getSelf());
+    }
+
+    //Pick a random finger table entry to refresh and send a FixFingers command to yourself.
+    private void fixFingers(){
+        Random r = new Random();
+        int fingerSize = fingerTableService.getFingers().size();
+        int i = r.nextInt(fingerSize);
+        Finger finger = fingerTableService.getFingers().get(i);
+        if(finger == null){
+            log.info("No finger entry at index {0}",i);
+            return;
+        }
+        getSelf().tell(new FixFingers(i,finger.getStart()),getSelf());
+    }
+
+    private void handleFixFingersReply(FixFingersReply fingersReply){
+        int index = fingersReply.getIndex();
+        Finger finger = this.fingerTableService.getFingers().get(index);
+        fingerTableService.getFingers().set(index,new Finger(finger.getStart(),finger.getInterval(),fingersReply.getSuccessor()));
+    }
+
+    private void fixFingersPredecessor(FixFingers fixFingers){
+        long id = fixFingers.getStart();
+        // If not in my interval
+        if (!between(node.getId(),false, fingerTableService.getSuccessor().getId(), true, id)) {
+            // Find closest preceding finger in my finger table
+            ChordNode closestNode = closestPrecedingFinger(id);
+            ActorSelection closestNodeRef = Util.getActorRef(getContext(), closestNode);
+
+            // Tell him to return his predecessor
+            closestNodeRef.forward(new FixFingers(fixFingers.getIndex(),id),getContext());
+        }
+        else {
+            // If I'm the node return my successor
+            getSender().tell(new FixFingersReply(fingerTableService.getSuccessor(),fixFingers.getIndex()), getSelf());
         }
     }
 
