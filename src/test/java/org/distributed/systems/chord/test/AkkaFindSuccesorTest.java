@@ -5,7 +5,6 @@ import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import akka.testkit.javadsl.TestKit;
 import org.distributed.systems.chord.actors.Node;
-import org.distributed.systems.chord.messaging.NodeJoinMessage;
 import org.distributed.systems.chord.model.ChordNode;
 import org.distributed.systems.chord.model.finger.Finger;
 import org.distributed.systems.chord.model.finger.FingerInterval;
