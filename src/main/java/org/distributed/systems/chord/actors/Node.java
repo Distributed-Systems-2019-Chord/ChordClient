@@ -142,7 +142,7 @@ public class Node extends AbstractActor {
                     }
 
                     // Find predecessor --> in reply send FindSuccessorReply
-                    tellFindmPredecessor(findSuccessor.getId(), getSender());
+                    tellFindPredecessor(findSuccessor.getId(), getSender());
                 })
                 .match(FindSuccessorReply.class, findSuccessorReply -> {
                     // Reply on the DirectGetSuccessor message (that is called after the findPredecessor)
