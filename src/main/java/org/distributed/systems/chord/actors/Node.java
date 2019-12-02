@@ -214,7 +214,7 @@ public class Node extends AbstractActor {
                 //you might be it's predecessor.
                 .match(StabilizeReply.class, stabilizeReply -> {
                     ChordNode x = stabilizeReply.getPredecessor();
-                    if(between(node.getId(),this.fingerTableService.getSuccessor().getId(),x.getId())&&node.getId()!=x.getId()){
+                    if(between(node.getId(),false,this.fingerTableService.getSuccessor().getId(),false,x.getId())){
                         this.fingerTableService.setSuccessor(x);
                     }
                     Util.getActorRef(getContext(),this.fingerTableService.getSuccessor()).tell(new Notify(this.node),getSelf());
@@ -225,7 +225,8 @@ public class Node extends AbstractActor {
                     if(this.fingerTableService.getPredecessor()== null){
                         this.fingerTableService.setPredecessor(possiblePredecessor);
                     }
-                    else if(between(fingerTableService.getPredecessor().getId(),this.node.getId(),possiblePredecessor.getId())){
+                    else if(between(fingerTableService.getPredecessor().getId(),false,
+                            this.node.getId(),false,possiblePredecessor.getId())){
                         this.fingerTableService.setPredecessor(possiblePredecessor);
                     }
                 })
@@ -361,7 +362,7 @@ public class Node extends AbstractActor {
     private void fixFingersPredecessor(FixFingers fixFingers){
         long id = fixFingers.getStart();
         // If not in my interval
-        if (!between(node.getId(), fingerTableService.getSuccessor().getId(), id)) {
+        if (!between(node.getId(),false, fingerTableService.getSuccessor().getId(), true, id)) {
             // Find closest preceding finger in my finger table
             ChordNode closestNode = closestPrecedingFinger(id);
             ActorSelection closestNodeRef = Util.getActorRef(getContext(), closestNode);
