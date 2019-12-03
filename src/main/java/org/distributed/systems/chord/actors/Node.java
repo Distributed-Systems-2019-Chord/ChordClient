@@ -24,7 +24,7 @@ public class Node extends AbstractActor {
 
         if(nodeType.equals("regular")){
             final String centralEntityAddress = config.getString("myapp.centralEntityAddress");
-            String centralNodeAddress = "akka://ChordNetwork@" + centralEntityAddress + "/user/a";
+            String centralNodeAddress = "akka://ChordNetwork@" + centralEntityAddress + "/user/ChordActor0";
             log.info("Sending message to: " + centralNodeAddress);
             ActorSelection selection = getContext().actorSelection(centralNodeAddress);
 
