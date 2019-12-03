@@ -90,7 +90,7 @@ public class Node extends AbstractActor {
             // We need something, that ensures if this message get's lost --> everything from here on relies on msgs i guess
         }
 
-        // this.createMemCacheTCPSocket();
+        this.createMemCacheTCPSocket();
     }
 
     @Override
