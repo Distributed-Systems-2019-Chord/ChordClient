@@ -1,0 +1,24 @@
+version: '2.2'
+services:
+  base:
+    build:
+      context: .
+    image: chord:v1
+    command:
+      - "bash"
+  centralnode:
+    image: chord:v1
+    environment:
+      - CHORD_NODE_TYPE=central
+    ports:
+      - 11211:11211
+  regular01:
+    image: chord:v1
+    environment:
+      - CHORD_NODE_TYPE=regular
+      - CHORD_CENTRAL_NODE=centralnode
+      - CHORD_CENTRAL_NODE_PORT=25520
+    depends_on:
+      - centralnode
+    ports:
+      - 11212:11211

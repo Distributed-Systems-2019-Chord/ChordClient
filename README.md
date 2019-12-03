@@ -14,6 +14,8 @@ To run central node use parameter: `-Dconfig.resource=/centralNode.conf`
 
 To run regular nodes use parameter: `-Dconfig.resource=/regularNode.conf`
 
+To set your own node id specify node.id=x in the environment variables.
+
 Test run: first run central node then run the regular node
 
 ## Branching
