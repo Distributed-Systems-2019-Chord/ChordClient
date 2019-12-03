@@ -17,5 +17,8 @@ services:
     environment:
       - CHORD_NODE_TYPE=regular
       - CHORD_CENTRAL_NODE=centralnode
+      - CHORD_CENTRAL_NODE_PORT=25520
+    depends_on:
+      - centralnode
     ports:
       - 11212:11211

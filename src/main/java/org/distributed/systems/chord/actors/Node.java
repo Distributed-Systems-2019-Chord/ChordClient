@@ -19,7 +19,9 @@ import scala.concurrent.Await;
 import scala.concurrent.Future;
 
 import java.io.Serializable;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
 import java.time.Duration;
 import java.util.Random;
 
@@ -104,12 +106,20 @@ public class Node extends AbstractActor {
 
     private String getCentralNodeAddress() {
         String centralEntityAddress = config.getString("myapp.centralEntityAddress");
-        
+        String centralEntityAddressPort = config.getString("myapp.centralEntityPort");
         if (System.getenv("CHORD_CENTRAL_NODE") != null) {
             centralEntityAddress = System.getenv("CHORD_CENTRAL_NODE");
+            centralEntityAddressPort = System.getenv("CHORD_CENTRAL_NODE_PORT");
+            try {
+                InetAddress address = InetAddress.getByName(centralEntityAddress);
+                centralEntityAddress = address.getHostAddress();
+                System.out.println(address.getHostAddress());
+            } catch (Exception e) {
+                // TODO: need to handle
+            }
         }
 
-        return "akka://ChordNetwork@" + centralEntityAddress + "/user/ChordActor";
+        return "akka://ChordNetwork@" + centralEntityAddress + ":" + centralEntityAddressPort + "/user/ChordActor";
     }
 
     @Override
