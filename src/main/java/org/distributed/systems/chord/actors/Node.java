@@ -21,7 +21,6 @@ import scala.concurrent.Future;
 import java.io.Serializable;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.UnknownHostException;
 import java.time.Duration;
 import java.util.Random;
 
@@ -92,7 +91,7 @@ public class Node extends AbstractActor {
             // We need something, that ensures if this message get's lost --> everything from here on relies on msgs i guess
         }
 
-        this.createMemCacheTCPSocket();
+//        this.createMemCacheTCPSocket();
     }
 
     private String getNodeType() {
@@ -165,24 +164,8 @@ public class Node extends AbstractActor {
                             // if my predecessor is bigger than i am, then the joiner needs to inserted here -> else forward
                             if (this.id < this.predecessorId) {
                                 // TODO: Code Duplicate
-                                JoinMessage.JoinConfirmationRequest joinConfirmationRequestMessage = new JoinMessage.JoinConfirmationRequest(null, 0, msg.requestor, msg.requestorKey);
-                                Timeout timeout = Timeout.create(Duration.ofMillis(ChordStart.STANDARD_TIME_OUT));
-                                Future<Object> confirmationReqFuture = Patterns.ask(this.predecessor, joinConfirmationRequestMessage, timeout);
-                                JoinMessage.JoinConfirmationReply result = (JoinMessage.JoinConfirmationReply) Await.result(confirmationReqFuture, timeout.duration());
-                                //TODO: Handle timeout!
-                                if (result.accepted) {
-                                    JoinMessage.JoinReply joinReplyMessage = new JoinMessage.JoinReply(this.predecessor, getSelf(), true, this.predecessorId, this.id);
-                                    msg.requestor.tell(joinReplyMessage, getSelf());
-                                    this.predecessor = msg.requestor;
-                                    this.predecessorId = msg.requestorKey;
-                                    System.out.println("I confirmed the final join!");
-                                    return;
-                                } else {
-                                    JoinMessage.JoinReply joinReplyMessage = new JoinMessage.JoinReply(null, null, false);
-                                    msg.requestor.tell(joinReplyMessage, getSelf());
-                                    System.out.println("I declined the JOIN, predecessor rejected join!");
-                                    return;
-                                }
+                                handleJoinRefPred(msg);
+                                return;
 
                             } else {
                                 this.sucessor.forward(msg, getContext());
@@ -190,68 +173,17 @@ public class Node extends AbstractActor {
 
                             return;
                         } else if (this.predecessorId < msg.requestorKey && msg.requestorKey < this.id) {
-                            JoinMessage.JoinConfirmationRequest joinConfirmationRequestMessage = new JoinMessage.JoinConfirmationRequest(null, 0, msg.requestor, msg.requestorKey);
-                            Timeout timeout = Timeout.create(Duration.ofMillis(ChordStart.STANDARD_TIME_OUT));
-                            Future<Object> confirmationReqFuture = Patterns.ask(this.predecessor, joinConfirmationRequestMessage, timeout);
-                            JoinMessage.JoinConfirmationReply result = (JoinMessage.JoinConfirmationReply) Await.result(confirmationReqFuture, timeout.duration());
-                            //TODO: Handle timeout!
-                            if (result.accepted) {
-                                JoinMessage.JoinReply joinReplyMessage = new JoinMessage.JoinReply(this.predecessor, getSelf(), true, this.predecessorId, this.id);
-                                msg.requestor.tell(joinReplyMessage, getSelf());
-                                this.predecessor = msg.requestor;
-                                this.predecessorId = msg.requestorKey;
-                                System.out.println("I confirmed the final join!");
-                                return;
-                            } else {
-                                JoinMessage.JoinReply joinReplyMessage = new JoinMessage.JoinReply(null, null, false);
-                                msg.requestor.tell(joinReplyMessage, getSelf());
-                                System.out.println("I declined the JOIN, predecessor rejected join!");
-                                return;
-                            }
+                            handleJoinRefPred(msg);
                         } else if (this.id < msg.requestorKey && msg.requestorKey < this.sucessorId) {
-                            JoinMessage.JoinConfirmationRequest joinConfirmationRequestMessage = new JoinMessage.JoinConfirmationRequest(msg.requestor, msg.requestorKey, null, 0);
-                            Timeout timeout = Timeout.create(Duration.ofMillis(ChordStart.STANDARD_TIME_OUT));
-                            Future<Object> confirmationReqFuture = Patterns.ask(this.sucessor, joinConfirmationRequestMessage, timeout);
-                            JoinMessage.JoinConfirmationReply result = (JoinMessage.JoinConfirmationReply) Await.result(confirmationReqFuture, timeout.duration());
-                            //TODO: Handle timeout!
-                            if (result.accepted) {
-                                JoinMessage.JoinReply joinReplyMessage = new JoinMessage.JoinReply(getSelf(), this.sucessor, true, this.id, this.sucessorId);
-                                msg.requestor.tell(joinReplyMessage, getSelf());
-                                this.sucessor = msg.requestor;
-                                this.sucessorId = msg.requestorKey;
-                                System.out.println("I confirmed the final join!");
-                                return;
-                            } else {
-                                JoinMessage.JoinReply joinReplyMessage = new JoinMessage.JoinReply(null, null, false);
-                                msg.requestor.tell(joinReplyMessage, getSelf());
-                                System.out.println("I declined the JOIN, predecessor rejected join!");
-                                return;
-                            }
+                            handleJoinRefSucc(msg);
+                            return;
                         } else if (this.sucessorId < msg.requestorKey) {
                             System.out.println("I forward to sucessor!");
                             // this.sucessor.forward(msg, getContext());
                             // if my sucessor is smaller than i am, then the joiner needs to inserted here -> else forward
                             if (this.sucessorId < this.id) {
                                 // TODO: Code Duplicate
-                                JoinMessage.JoinConfirmationRequest joinConfirmationRequestMessage = new JoinMessage.JoinConfirmationRequest(msg.requestor, msg.requestorKey, null, 0);
-                                Timeout timeout = Timeout.create(Duration.ofMillis(ChordStart.STANDARD_TIME_OUT));
-                                Future<Object> confirmationReqFuture = Patterns.ask(this.sucessor, joinConfirmationRequestMessage, timeout);
-                                JoinMessage.JoinConfirmationReply result = (JoinMessage.JoinConfirmationReply) Await.result(confirmationReqFuture, timeout.duration());
-
-                                //TODO: Handle timeout!
-                                if (result.accepted) {
-                                    JoinMessage.JoinReply joinReplyMessage = new JoinMessage.JoinReply(getSelf(), this.sucessor, true, this.id, this.sucessorId);
-                                    msg.requestor.tell(joinReplyMessage, getSelf());
-                                    this.sucessor = msg.requestor;
-                                    this.sucessorId = msg.requestorKey;
-                                    System.out.println("I confirmed the final join!");
-                                    return;
-                                } else {
-                                    JoinMessage.JoinReply joinReplyMessage = new JoinMessage.JoinReply(null, null, false);
-                                    msg.requestor.tell(joinReplyMessage, getSelf());
-                                    System.out.println("I declined the JOIN, predecessor rejected join!");
-                                    return;
-                                }
+                                handleJoinRefSucc(msg);
 
                             } else {
                                 this.sucessor.forward(msg, getContext());
@@ -296,13 +228,15 @@ public class Node extends AbstractActor {
                         JoinMessage.JoinConfirmationReply confirmReplyMsg = new JoinMessage.JoinConfirmationReply(true);
                         getContext().getSender().tell(confirmReplyMsg, ActorRef.noSender());
                         System.out.println("I confirmed the join -- ");
-                    } else if  (msg.newPredecessor != null && msg.newSucessor == null) {
+                        System.out.println("New successor: " + msg.newSucessorKey);
+                    } else if (msg.newPredecessor != null && msg.newSucessor == null) {
                         // it's a predecessor
                         this.predecessorId = msg.newPredecessorKey;
                         this.predecessor = msg.newPredecessor;
                         JoinMessage.JoinConfirmationReply confirmReplyMsg = new JoinMessage.JoinConfirmationReply(true);
                         getContext().getSender().tell(confirmReplyMsg, ActorRef.noSender());
                         System.out.println("I confirmed the join -- ");
+                        System.out.println("New predecessor: " + msg.newPredecessorKey);
                     } else {
                         // it's equal -> need to reject this!
                         JoinMessage.JoinConfirmationReply confirmReplyMsg = new JoinMessage.JoinConfirmationReply(false);
@@ -344,6 +278,50 @@ public class Node extends AbstractActor {
                     this.storageActorRef.forward(getValueMessage, getContext());
                 })
                 .build();
+    }
+
+    private void handleJoinRefSucc(JoinMessage.JoinRequest msg) throws Exception {
+        JoinMessage.JoinConfirmationRequest joinConfirmationRequestMessage = new JoinMessage.JoinConfirmationRequest(msg.requestor, msg.requestorKey, null, 0);
+        Timeout timeout = Timeout.create(Duration.ofMillis(ChordStart.STANDARD_TIME_OUT));
+        Future<Object> confirmationReqFuture = Patterns.ask(this.sucessor, joinConfirmationRequestMessage, timeout);
+        JoinMessage.JoinConfirmationReply result = (JoinMessage.JoinConfirmationReply) Await.result(confirmationReqFuture, timeout.duration());
+        //TODO: Handle timeout!
+        if (result.accepted) {
+            JoinMessage.JoinReply joinReplyMessage = new JoinMessage.JoinReply(getSelf(), this.sucessor, true, this.id, this.sucessorId);
+            msg.requestor.tell(joinReplyMessage, getSelf());
+            this.sucessor = msg.requestor;
+            this.sucessorId = msg.requestorKey;
+            System.out.println("I confirmed the final join!");
+            System.out.println("My new successor: " + msg.requestorKey);
+            return;
+        } else {
+            JoinMessage.JoinReply joinReplyMessage = new JoinMessage.JoinReply(null, null, false);
+            msg.requestor.tell(joinReplyMessage, getSelf());
+            System.out.println("I declined the JOIN, predecessor rejected join!");
+            return;
+        }
+    }
+
+    private void handleJoinRefPred(JoinMessage.JoinRequest msg) throws Exception {
+        JoinMessage.JoinConfirmationRequest joinConfirmationRequestMessage = new JoinMessage.JoinConfirmationRequest(null, 0, msg.requestor, msg.requestorKey);
+        Timeout timeout = Timeout.create(Duration.ofMillis(ChordStart.STANDARD_TIME_OUT));
+        Future<Object> confirmationReqFuture = Patterns.ask(this.predecessor, joinConfirmationRequestMessage, timeout);
+        JoinMessage.JoinConfirmationReply result = (JoinMessage.JoinConfirmationReply) Await.result(confirmationReqFuture, timeout.duration());
+        //TODO: Handle timeout!
+        if (result.accepted) {
+            JoinMessage.JoinReply joinReplyMessage = new JoinMessage.JoinReply(this.predecessor, getSelf(), true, this.predecessorId, this.id);
+            msg.requestor.tell(joinReplyMessage, getSelf());
+            this.predecessor = msg.requestor;
+            this.predecessorId = msg.requestorKey;
+            System.out.println("I confirmed the final join!");
+            System.out.println("My new predecessor: " + msg.requestorKey);
+            return;
+        } else {
+            JoinMessage.JoinReply joinReplyMessage = new JoinMessage.JoinReply(null, null, false);
+            msg.requestor.tell(joinReplyMessage, getSelf());
+            System.out.println("I declined the JOIN, predecessor rejected join!");
+            return;
+        }
     }
 
     private void createMemCacheTCPSocket() {

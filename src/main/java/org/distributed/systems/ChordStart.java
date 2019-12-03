@@ -2,10 +2,7 @@ package org.distributed.systems;
 
 import akka.actor.ActorSystem;
 import akka.actor.Props;
-import com.typesafe.config.Config;
 import org.distributed.systems.chord.actors.Node;
-
-import java.util.Map;
 
 public class ChordStart {
 
@@ -19,10 +16,10 @@ public class ChordStart {
 
         System.out.println("\nStarting with Enviroment Variables:-\n");
 
-        Map <String, String> map = System.getenv();
-        for (Map.Entry <String, String> entry: map.entrySet()) {
-            System.out.println("Variable Name:- " + entry.getKey() + " Value:- " + entry.getValue());
-        }
+//        Map<String, String> map = System.getenv();
+//        for (Map.Entry<String, String> entry : map.entrySet()) {
+//            System.out.println("Variable Name:- " + entry.getKey() + " Value:- " + entry.getValue());
+//        }
 
         system.actorOf(Props.create(Node.class), "ChordActor");
     }
