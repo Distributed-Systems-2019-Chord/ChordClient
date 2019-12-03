@@ -2,7 +2,6 @@ package org.distributed.systems.chord.actors;
 
 import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
-import akka.actor.ActorSelection;
 import akka.actor.Props;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
@@ -10,19 +9,18 @@ import akka.io.Tcp;
 import akka.io.Tcp.CommandFailed;
 import akka.io.Tcp.Connected;
 import akka.io.TcpMessage;
+import akka.pattern.Patterns;
+import akka.util.Timeout;
 import com.typesafe.config.Config;
 import org.distributed.systems.ChordStart;
-import org.distributed.systems.chord.messaging.*;
-import org.distributed.systems.chord.model.ChordNode;
-import org.distributed.systems.chord.model.finger.Finger;
-import org.distributed.systems.chord.model.finger.FingerInterval;
-import org.distributed.systems.chord.service.FingerTableService;
-import org.distributed.systems.chord.util.CompareUtil;
-import org.distributed.systems.chord.util.Util;
-import org.distributed.systems.chord.util.impl.HashUtil;
+import org.distributed.systems.chord.messaging.JoinMessage;
+import org.distributed.systems.chord.messaging.KeyValue;
+import scala.concurrent.Await;
+import scala.concurrent.Future;
 
 import java.io.Serializable;
 import java.net.InetSocketAddress;
+import java.time.Duration;
 import java.util.Random;
 
 public class Node extends AbstractActor {
@@ -32,18 +30,21 @@ public class Node extends AbstractActor {
     static final int MEMCACHE_MAX_PORT = 12235;
     final ActorRef manager;
 
-    private int generateFingerCount = 1;
-    private static ChordNode node;
-    private FingerTableService fingerTableService;
     private ActorRef storageActorRef;
     private Config config = getContext().getSystem().settings().config();
-    private boolean memCacheEnabled = false;
 
-    public Node() {
-        fingerTableService = new FingerTableService();
+    private ActorRef predecessor = null;
+    private long predecessorId;
+    private ActorRef sucessor = null;
+    private long sucessorId;
+    private ActorRef centralNode = null;
+    private String type = "";
+    private long id;
+
+    public Node(String type) {
         this.manager = Tcp.get(getContext().getSystem()).manager();
         this.storageActorRef = getContext().actorOf(Props.create(StorageActor.class));
-
+        this.type = type;
     }
 
     public static Props props(ActorRef manager) {
@@ -54,34 +55,42 @@ public class Node extends AbstractActor {
     public void preStart() throws Exception {
         super.preStart();
         log.info("Starting up...     ref: " + getSelf());
-        long envVal;
-        if (System.getenv("node.id") == null) {
-            envVal = new HashUtil().hash(getSelf().path().toSerializationFormat()); // FIXME Should be IP
+
+        // Generating Id:
+        Random randomGenerator = new Random();
+        long randomInt = randomGenerator.nextInt(ChordStart.M);
+        this.id = randomInt;
+        System.out.println("Node Id " + randomInt);
+
+        System.out.println(this.type);
+
+        if (this.type == "central") {
+            //Assumption: central node first up and never fails :D
+            // thus: node initially has it's pre and suc equal it's own identity
+            this.predecessor = getSelf();
+            this.predecessorId = this.id;
+            this.sucessor = getSelf();
+            this.sucessorId = this.id;
+
+            System.out.println("I am a central node, so I don't care about others");
         } else {
-            envVal = Long.parseLong(System.getenv("node.id"));
+            // Assumption: Central node is on ip 127.0.0.1:25521 and is asked to join
+            final String centralNodeAddress = "akka://ChordNetwork@127.0.0.1:25521/user/ChordActor";
+            Timeout timeout = Timeout.create(Duration.ofMillis(ChordStart.STANDARD_TIME_OUT));
+            System.out.println("I am a regular node, so I need my central");
+            Future<ActorRef> centralNodeFuture = getContext().actorSelection(centralNodeAddress).resolveOne(timeout);
+            this.centralNode = (ActorRef) Await.result(centralNodeFuture, timeout.duration());
+            System.out.println("I found my central node");
         }
-        final long NODE_ID = envVal;
-        System.out.println("Starting up with node_id: " + NODE_ID);
 
-        node = new ChordNode(NODE_ID, Util.getIp(config), Util.getPort(config));
-        if (memCacheEnabled) {
-            this.createMemCacheTCPSocket();
+        if (this.centralNode != null) {
+            // Request a Join
+            JoinMessage.JoinRequest joinRequestMessage = new JoinMessage.JoinRequest(getSelf(), this.id);
+            this.centralNode.tell(joinRequestMessage, getSelf());
+            // We need something, that ensures if this message get's lost --> everything from here on relies on msgs i guess
         }
-        joinNetwork();
-    }
 
-    private void createMemCacheTCPSocket() {
-        createMemCacheTCPSocket(Node.MEMCACHE_MIN_PORT);
-        // TODO: Environment Var Control?
-    }
-
-    private void createMemCacheTCPSocket(int port) {
-
-        final ActorRef tcp = Tcp.get(getContext().getSystem()).manager();
-        // TODO: We need to expose this port to the outer world
-        InetSocketAddress tcp_socked = new InetSocketAddress("localhost", port);
-        Tcp.Command tcpmsg = TcpMessage.bind(getSelf(), tcp_socked, 100);
-        tcp.tell(tcpmsg, getSelf());
+        // this.createMemCacheTCPSocket();
     }
 
     @Override
@@ -89,6 +98,188 @@ public class Node extends AbstractActor {
         log.info("Received a message");
 
         return receiveBuilder()
+                .match(JoinMessage.JoinRequest.class, msg -> {
+                    System.out.println("A node asked to join");
+
+                    if (this.predecessor == getSelf() && this.sucessor == getSelf() && this.type == "regular") {
+                        JoinMessage.JoinReply joinReplyMessage = new JoinMessage.JoinReply(null, null, false);
+                        msg.requestor.tell(joinReplyMessage, getSelf());
+                        System.out.println("I declined the JOIN, I am a regular Node being part of no network");
+                        return;
+                    }
+
+                    if (msg.requestorKey == this.id) {
+                        JoinMessage.JoinReply joinReplyMessage = new JoinMessage.JoinReply(null, null, false);
+                        msg.requestor.tell(joinReplyMessage, getSelf());
+                        System.out.println("I declined the JOIN, node that request join has same key!");
+                        return;
+                    }
+                    // Central Node Is The Only Node in the ring
+                    if (this.predecessor == getSelf() && this.sucessor == getSelf()) {
+                        // Easy Case: Just Join as Predecessor + Sucessor
+                        this.sucessor = msg.requestor;
+                        this.sucessorId = msg.requestorKey;
+                        this.predecessor = msg.requestor;
+                        this.predecessorId = msg.requestorKey;
+                        JoinMessage.JoinReply joinReplyMessage = new JoinMessage.JoinReply(getSelf(), getSelf(), true, this.id, this.id);
+                        msg.requestor.tell(joinReplyMessage, getSelf());
+                    } else {
+                        // FOUR cases:
+                        // 1. Smaller than predecessor -> forward this message
+                        // 2. Between predecessor and me --> ask predecessor for join confirmation and then I reply okay
+                        // 3. Between sucessor and me --> ask sucessor for join confirmation and then I reply okay
+                        // 4. Greater than successor -> forward this message
+                        if (msg.requestorKey < this.predecessorId) {
+                            // this.predecessor.forward(msg, getContext());
+                            System.out.println("I forward to predecessor!");
+
+                            // if my predecessor is bigger than i am, then the joiner needs to inserted here -> else forward
+                            if (this.id < this.predecessorId) {
+                                // TODO: Code Duplicate
+                                JoinMessage.JoinConfirmationRequest joinConfirmationRequestMessage = new JoinMessage.JoinConfirmationRequest(null, 0, msg.requestor, msg.requestorKey);
+                                Timeout timeout = Timeout.create(Duration.ofMillis(ChordStart.STANDARD_TIME_OUT));
+                                Future<Object> confirmationReqFuture = Patterns.ask(this.predecessor, joinConfirmationRequestMessage, timeout);
+                                JoinMessage.JoinConfirmationReply result = (JoinMessage.JoinConfirmationReply) Await.result(confirmationReqFuture, timeout.duration());
+                                //TODO: Handle timeout!
+                                if (result.accepted) {
+                                    JoinMessage.JoinReply joinReplyMessage = new JoinMessage.JoinReply(this.predecessor, getSelf(), true, this.predecessorId, this.id);
+                                    msg.requestor.tell(joinReplyMessage, getSelf());
+                                    this.predecessor = msg.requestor;
+                                    this.predecessorId = msg.requestorKey;
+                                    System.out.println("I confirmed the final join!");
+                                    return;
+                                } else {
+                                    JoinMessage.JoinReply joinReplyMessage = new JoinMessage.JoinReply(null, null, false);
+                                    msg.requestor.tell(joinReplyMessage, getSelf());
+                                    System.out.println("I declined the JOIN, predecessor rejected join!");
+                                    return;
+                                }
+
+                            } else {
+                                this.sucessor.forward(msg, getContext());
+                            }
+
+                            return;
+                        } else if (this.predecessorId < msg.requestorKey && msg.requestorKey < this.id) {
+                            JoinMessage.JoinConfirmationRequest joinConfirmationRequestMessage = new JoinMessage.JoinConfirmationRequest(null, 0, msg.requestor, msg.requestorKey);
+                            Timeout timeout = Timeout.create(Duration.ofMillis(ChordStart.STANDARD_TIME_OUT));
+                            Future<Object> confirmationReqFuture = Patterns.ask(this.predecessor, joinConfirmationRequestMessage, timeout);
+                            JoinMessage.JoinConfirmationReply result = (JoinMessage.JoinConfirmationReply) Await.result(confirmationReqFuture, timeout.duration());
+                            //TODO: Handle timeout!
+                            if (result.accepted) {
+                                JoinMessage.JoinReply joinReplyMessage = new JoinMessage.JoinReply(this.predecessor, getSelf(), true, this.predecessorId, this.id);
+                                msg.requestor.tell(joinReplyMessage, getSelf());
+                                this.predecessor = msg.requestor;
+                                this.predecessorId = msg.requestorKey;
+                                System.out.println("I confirmed the final join!");
+                                return;
+                            } else {
+                                JoinMessage.JoinReply joinReplyMessage = new JoinMessage.JoinReply(null, null, false);
+                                msg.requestor.tell(joinReplyMessage, getSelf());
+                                System.out.println("I declined the JOIN, predecessor rejected join!");
+                                return;
+                            }
+                        } else if (this.id < msg.requestorKey && msg.requestorKey < this.sucessorId) {
+                            JoinMessage.JoinConfirmationRequest joinConfirmationRequestMessage = new JoinMessage.JoinConfirmationRequest(msg.requestor, msg.requestorKey, null, 0);
+                            Timeout timeout = Timeout.create(Duration.ofMillis(ChordStart.STANDARD_TIME_OUT));
+                            Future<Object> confirmationReqFuture = Patterns.ask(this.sucessor, joinConfirmationRequestMessage, timeout);
+                            JoinMessage.JoinConfirmationReply result = (JoinMessage.JoinConfirmationReply) Await.result(confirmationReqFuture, timeout.duration());
+                            //TODO: Handle timeout!
+                            if (result.accepted) {
+                                JoinMessage.JoinReply joinReplyMessage = new JoinMessage.JoinReply(getSelf(), this.sucessor, true, this.id, this.sucessorId);
+                                msg.requestor.tell(joinReplyMessage, getSelf());
+                                this.sucessor = msg.requestor;
+                                this.sucessorId = msg.requestorKey;
+                                System.out.println("I confirmed the final join!");
+                                return;
+                            } else {
+                                JoinMessage.JoinReply joinReplyMessage = new JoinMessage.JoinReply(null, null, false);
+                                msg.requestor.tell(joinReplyMessage, getSelf());
+                                System.out.println("I declined the JOIN, predecessor rejected join!");
+                                return;
+                            }
+                        } else if (this.sucessorId < msg.requestorKey) {
+                            System.out.println("I forward to sucessor!");
+                            // this.sucessor.forward(msg, getContext());
+                            // if my sucessor is smaller than i am, then the joiner needs to inserted here -> else forward
+                            if (this.sucessorId < this.id) {
+                                // TODO: Code Duplicate
+                                JoinMessage.JoinConfirmationRequest joinConfirmationRequestMessage = new JoinMessage.JoinConfirmationRequest(msg.requestor, msg.requestorKey, null, 0);
+                                Timeout timeout = Timeout.create(Duration.ofMillis(ChordStart.STANDARD_TIME_OUT));
+                                Future<Object> confirmationReqFuture = Patterns.ask(this.sucessor, joinConfirmationRequestMessage, timeout);
+                                JoinMessage.JoinConfirmationReply result = (JoinMessage.JoinConfirmationReply) Await.result(confirmationReqFuture, timeout.duration());
+
+                                //TODO: Handle timeout!
+                                if (result.accepted) {
+                                    JoinMessage.JoinReply joinReplyMessage = new JoinMessage.JoinReply(getSelf(), this.sucessor, true, this.id, this.sucessorId);
+                                    msg.requestor.tell(joinReplyMessage, getSelf());
+                                    this.sucessor = msg.requestor;
+                                    this.sucessorId = msg.requestorKey;
+                                    System.out.println("I confirmed the final join!");
+                                    return;
+                                } else {
+                                    JoinMessage.JoinReply joinReplyMessage = new JoinMessage.JoinReply(null, null, false);
+                                    msg.requestor.tell(joinReplyMessage, getSelf());
+                                    System.out.println("I declined the JOIN, predecessor rejected join!");
+                                    return;
+                                }
+
+                            } else {
+                                this.sucessor.forward(msg, getContext());
+                            }
+
+                            return;
+                        } else {
+                            // Else: Keys are equal: Reject join
+                            JoinMessage.JoinReply joinReplyMessage = new JoinMessage.JoinReply(null, null, false);
+                            msg.requestor.tell(joinReplyMessage, getSelf());
+                            System.out.println("I declined the JOIN, node that request join has same key of a node in the network!");
+                            return;
+                        }
+                    }
+                    System.out.println("I accepted the JOIN");
+                    System.out.println("Successor:" + this.sucessor.toString() + " with id:" + this.sucessorId);
+                    System.out.println("Predecessor:" + this.predecessor.toString() + " with id:" + this.predecessorId);
+                })
+                .match(JoinMessage.JoinReply.class, msg -> {
+                    System.out.println("I got a JoinReply");
+                    if (msg.accepted) {
+                        this.predecessor = msg.predecessor;
+                        this.predecessorId = msg.predecessorId;
+                        this.sucessor = msg.sucessor;
+                        this.sucessorId = msg.sucessorId;
+                        System.out.println("I joined the Network");
+                        System.out.println("Successor:" + this.sucessor.toString() + " with id:" + this.sucessorId);
+                        System.out.println("Predecessor:" + this.predecessor.toString() + " with id:" + this.predecessorId);
+                    } else {
+                        System.out.println("Could not JOIN network, Shutting down");
+                        getContext().stop(getSelf());
+                    }
+                })
+                .match(JoinMessage.JoinConfirmationRequest.class, msg -> {
+                    System.out.println("I need to confirm a join request");
+
+                    // Determine if a successor or predecessor
+                    if (msg.newPredecessor == null && msg.newSucessor != null) {
+                        // it's a successor
+                        this.sucessorId = msg.newSucessorKey;
+                        this.sucessor = msg.newSucessor;
+                        JoinMessage.JoinConfirmationReply confirmReplyMsg = new JoinMessage.JoinConfirmationReply(true);
+                        getContext().getSender().tell(confirmReplyMsg, ActorRef.noSender());
+                        System.out.println("I confirmed the join -- ");
+                    } else if  (msg.newPredecessor != null && msg.newSucessor == null) {
+                        // it's a predecessor
+                        this.predecessorId = msg.newPredecessorKey;
+                        this.predecessor = msg.newPredecessor;
+                        JoinMessage.JoinConfirmationReply confirmReplyMsg = new JoinMessage.JoinConfirmationReply(true);
+                        getContext().getSender().tell(confirmReplyMsg, ActorRef.noSender());
+                        System.out.println("I confirmed the join -- ");
+                    } else {
+                        // it's equal -> need to reject this!
+                        JoinMessage.JoinConfirmationReply confirmReplyMsg = new JoinMessage.JoinConfirmationReply(false);
+                        getContext().getSender().tell(confirmReplyMsg, ActorRef.noSender());
+                    }
+                })
                 .match(Tcp.Bound.class, msg -> {
                     // This will be called, when the SystemActor bound MemCache interface for the particular node.
                     manager.tell(msg, getSelf());
@@ -123,314 +314,21 @@ public class Node extends AbstractActor {
                 .match(KeyValue.Get.class, getValueMessage -> {
                     this.storageActorRef.forward(getValueMessage, getContext());
                 })
-                .match(FindSuccessor.class, findSuccessor -> {
-                    log.info("FindSuccessor");
-                    // When you get a message from yourself
-                    if (getSender().equals(getSelf())) {
-                        // I will set my successor
-                        fingerTableService.getFingers().get(generateFingerCount).setSucc(fingerTableService.getSuccessor());
-
-                        // Check if we need more finger entries
-                        if (isFingerTableNotComplete()) {
-                            loopAndFixFingers();
-                        } else {
-                            printFingerTable();
-                            updateOthers();
-                        }
-                        return;
-                    }
-
-                    // Find predecessor --> in reply send FindSuccessorReply
-                    tellFindPredecessor(findSuccessor.getId(), FindPredecessorReply.UNSET, getSender());
-                })
-                .match(FindSuccessorReply.class, findSuccessorReply -> {
-                    // Reply on the DirectGetSuccessor message (that is called after the findPredecessor)
-//                    log.info("FindSuccessorReply");
-
-                    Util.getActorRef(getContext(), findSuccessorReply.getNode()).tell(new SetPredecessor(node), getSelf());
-
-                    // The successor and predecessor of this node are now known
-                    initialiseFirstFinger(findSuccessorReply.getNode());
-                    generateFingerTable(getCentralNode(getCentralNodeAddress()));
-                })
-                .match(FindPredecessor.class, findPredecessor -> {
-//                    log.info("FindPredecessor");
-                    tellFindPredecessor(findPredecessor.getId(), findPredecessor.getIndex(), findPredecessor.getOriginalSender());
-                })
-                .match(FindPredecessorReply.class, findPredecessorReply -> {
-                    log.info("FindPredecessorReply");
-                    // Init finger table phase -> set first
-                    if (fingerTableService.getFingers().isEmpty()) {
-                        log.info("Init finger table phase -> set first");
-                        /*
-                        finger[1].node = n'.find_successor(finger[1].start);
-                        predecessor = successor.predecessor;
-                        successor predecessor;
-                         */
-                        fixLocalPredecessorAndSuccessor(findPredecessorReply);
-                    }
-
-                    // Init finger table phase -> finger table is not complete
-                    else if (isFingerTableNotComplete()) {
-                        log.info("Init finger table phase -> finger table is not complete");
-                        /*
-                        for i = 1 to m
-                            if
-                            else
-                         */
-                        loopAndFixFingers();
-                    }
-
-                    // Update others phase. The update message should be send by the original sender
-                    // index (only given by update finger table) is not unset
-                    else if (findPredecessorReply.getIndex() != FindPredecessorReply.UNSET) {
-                        log.info("Update others phase. The update message should be send by the original sender: " + findPredecessorReply.getOriginalSender());
-                        ActorSelection toUpdatePredRef = Util.getActorRef(getContext(), findPredecessorReply.getNode());
-                        toUpdatePredRef.tell(new UpdateFinger(findPredecessorReply.getIndex(), node), getSelf());
-                    }
-                    // We are not in a phase that should happen.
-                    else {
-                        log.error("This shouldn't happen");
-                    }
-                })
-                .match(SetPredecessor.class, setPredecessor -> {
-                    log.info("I have a new predecessor: " + setPredecessor.getNode().getId());
-                    fingerTableService.setPredecessor(setPredecessor.getNode());
-                })
-                .match(DirectGetSuccessor.class, directGetSuccessor -> {
-//                    log.info("DirectGetSuccessor");
-                    // Tell joining node that this is the successor he is searching for
-                    getSender().tell(new FindSuccessorReply(fingerTableService.getSuccessor()), getSelf());
-                })
-                .match(UpdateFinger.class, updateFinger -> {
-//                    log.info("UpdateFinger");
-                    updateFingerTable(updateFinger.getNode(), updateFinger.getIndex());
-                })
-                //Send your predecessor upon a stabilize message from another node.
-                .match(Stabilize.class, stabilize -> {
-                    getSender().tell(new StabilizeReply(this.fingerTableService.getPredecessor()), getSelf());
-                })
-                //Set your new successor if your old successor has a new predecessor and notify your new successor that
-                //you might be it's predecessor.
-                .match(StabilizeReply.class, stabilizeReply -> {
-                    ChordNode x = stabilizeReply.getPredecessor();
-                    if (CompareUtil.between(node.getId(), false, this.fingerTableService.getSuccessor().getId(), false, x.getId())) { // FIXME should be between
-                        this.fingerTableService.setSuccessor(x);
-                    }
-                    Util.getActorRef(getContext(), this.fingerTableService.getSuccessor()).tell(new Notify(this.node), getSelf());
-                })
-                //If you get notified of a possible (new) predecessor, check if this is the case and set it.
-                .match(Notify.class, notify -> {
-                    ChordNode possiblePredecessor = notify.getNode();
-                    if (this.fingerTableService.getPredecessor() == null) {
-                        this.fingerTableService.setPredecessor(possiblePredecessor);
-                    } else if (CompareUtil.between(fingerTableService.getPredecessor().getId(), false, // FIXME should be between
-                            this.node.getId(), false, possiblePredecessor.getId())) {
-                        this.fingerTableService.setPredecessor(possiblePredecessor);
-                    }
-                })
-                .match(FixFingers.class,
-                        this::fixFingersPredecessor
-                )
-                .match(FixFingersReply.class,
-                        this::handleFixFingersReply
-                )
                 .build();
     }
 
-    private void joinNetwork() {
-        final String nodeType = config.getString("myapp.nodeType");
-        log.info("DEBUG -- nodetype: " + nodeType);
-        if (nodeType.equals("regular")) {
-            ActorSelection centralNode = getCentralNode(getCentralNodeAddress());
-
-            // First step is to find the correct successor
-            centralNode.tell(new FindSuccessor(node.getId()), getSelf());
-
-        } else if (nodeType.equals("central")) {
-            fingerTableService.setFingerTable(fingerTableService.initFingerTableCentral(node));
-            fingerTableService.setPredecessor(node);
-        }
+    private void createMemCacheTCPSocket() {
+        createMemCacheTCPSocket(Node.MEMCACHE_MIN_PORT);
+        // TODO: Environment Var Control?
     }
 
-    private void fixLocalPredecessorAndSuccessor(FindPredecessorReply findPredecessorReply) {
-        fingerTableService.setPredecessor(findPredecessorReply.getNode());
-        ActorSelection predRef = Util.getActorRef(getContext(), findPredecessorReply.getNode());
+    private void createMemCacheTCPSocket(int port) {
 
-        predRef.tell(new DirectGetSuccessor(), getSelf());
-
-        // mySuccessor = predRef.getSuccessor
-
-        // predRef.predecessor = node
+        final ActorRef tcp = Tcp.get(getContext().getSystem()).manager();
+        // TODO: We need to expose this port to the outer world
+        InetSocketAddress tcp_socked = new InetSocketAddress("localhost", port);
+        Tcp.Command tcpmsg = TcpMessage.bind(getSelf(), tcp_socked, 100);
+        tcp.tell(tcpmsg, getSelf());
     }
 
-    private void initialiseFirstFinger(ChordNode successor) {
-        long first = fingerTableService.startFinger(node.getId(), 1);
-        long second = fingerTableService.startFinger(node.getId(), 2);
-        FingerInterval firstInterval = new FingerInterval(first, second);
-        fingerTableService.getFingers().add(new Finger(first, firstInterval, successor));
-    }
-
-    private void generateFingerTable(ActorSelection centralNode) {
-        long beginFinger = fingerTableService.startFinger(node.getId(), generateFingerCount + 1);
-        long nextFinger = fingerTableService.startFinger(node.getId(), generateFingerCount + 2);
-        ChordNode currentSuccessor = fingerTableService.getSuccessor(); //getFingers().get(i).getSucc().getId();
-
-        FingerInterval interval = fingerTableService.calcInterval(beginFinger, nextFinger);
-        if (nextFinger >= node.getId() && nextFinger < currentSuccessor.getId()) { // FIXME should be between
-            fingerTableService.getFingers().add(new Finger(beginFinger, interval, currentSuccessor));
-//            log.info("Sending to my self: " + getSelf().toString());
-
-            getSelf().tell(new FindSuccessor(beginFinger), getSelf());
-        } else {
-            // Set empty successor will be handled when we get a message back
-            fingerTableService.getFingers().add(new Finger(beginFinger, interval, null));
-
-            // Ask for successor if not in current interval
-            centralNode.tell(new FindSuccessor(beginFinger), getSelf());
-        }
-    }
-
-    private void loopAndFixFingers() {
-//        log.info("Init finger table phase finger table is not complete");
-        fingerTableService.getFingers().get(generateFingerCount)
-                .setSucc(fingerTableService.getSuccessor());
-
-        generateFingerCount++;
-        if (generateFingerCount < ChordStart.m) {
-            generateFingerTable(getCentralNode(getCentralNodeAddress()));
-        } else {
-//            log.info("Update other nodes finger table should now be complete");
-            printFingerTable();
-
-            updateOthers();
-        }
-    }
-
-    //Send a stabilize message to your current successor.
-    private void stabilize() {
-        Util.getActorRef(getContext(), fingerTableService.getSuccessor()).tell(new Stabilize(), getSelf());
-    }
-
-    //Pick a random finger table entry to refresh and send a FixFingers command to yourself.
-    private void fixFingers() {
-        Random r = new Random();
-        int fingerSize = fingerTableService.getFingers().size();
-        int i = r.nextInt(fingerSize);
-        Finger finger = fingerTableService.getFingers().get(i);
-        if (finger == null) {
-            log.info("No finger entry at index {0}", i);
-            return;
-        }
-        getSelf().tell(new FixFingers(i, finger.getStart()), getSelf());
-    }
-
-    private void handleFixFingersReply(FixFingersReply fingersReply) {
-        int index = fingersReply.getIndex();
-        Finger finger = this.fingerTableService.getFingers().get(index);
-        fingerTableService.getFingers().set(index, new Finger(finger.getStart(), finger.getInterval(), fingersReply.getSuccessor()));
-    }
-
-    private void fixFingersPredecessor(FixFingers fixFingers) {
-        long id = fixFingers.getStart();
-        // If not in my interval
-        if (!CompareUtil.between(node.getId(), false, fingerTableService.getSuccessor().getId(), true, id)) { // FIXME should be between
-            // Find closest preceding finger in my finger table
-            ChordNode closestNode = closestPrecedingFinger(id);
-            ActorSelection closestNodeRef = Util.getActorRef(getContext(), closestNode);
-
-            // Tell him to return his predecessor
-            closestNodeRef.forward(new FixFingers(fixFingers.getIndex(), id), getContext());
-        } else {
-            // If I'm the node return my successor
-            getSender().tell(new FixFingersReply(fingerTableService.getSuccessor(), fixFingers.getIndex()), getSelf());
-        }
-    }
-
-    private void tellFindPredecessor(long id, int index, ActorRef originalSender) {
-//        ChordNode n = closestPrecedingFinger(id);
-        // If not in my interval
-        if (!CompareUtil.between(node.getId(), false, fingerTableService.getSuccessor().getId(), true, id)) { // FIXME should be between
-            log.info(id + "not in my interval");
-            // Find closest preceding finger in my finger table
-            ChordNode predecessor = closestPrecedingFinger(id);
-            log.info(predecessor.getId() + " is the closestPrecedingFinger");
-            ActorSelection closestPredNode = Util.getActorRef(getContext(), predecessor);
-
-            // Tell him to return his predecessor
-            log.info("Telling the closestPrecedingFinger to find predecessor: " + id + " index was: " + index);
-            closestPredNode.tell(new FindPredecessor(id, index, originalSender), getSelf());
-//            closestPredNode.forward(new FindPredecessor(id, index), getContext());
-        } else {
-            // If I'm the node return me to the original sender
-            log.info("I'm the predecessor of " + id + " telling this to " + originalSender.toString());
-            originalSender.tell(new FindPredecessorReply(node, index, getSender()), getSelf());
-        }
-    }
-
-    private ChordNode closestPrecedingFinger(long id) {
-        for (int i = ChordStart.m; i >= 1; i--) {
-
-            // Is in interval?
-            long ithSucc = fingerTableService.getFingers().get(i - 1).getSucc().getId();
-            if (CompareUtil.between(node.getId(), false, id, false, ithSucc)) { // FIXME should be between
-                return fingerTableService.getFingers().get(i - 1).getSucc();
-            }
-        }
-        // Return self
-        return node;
-    }
-
-    private void updateOthers() {
-        for (int i = 1; i <= ChordStart.m; i++) {
-            tellFindPredecessor(getFingerWhoseIthFingerMightBeNode(i), i, getSelf());
-        }
-    }
-
-    private long getFingerWhoseIthFingerMightBeNode(int i) {
-        return Math.floorMod((long) (node.getId() - Math.pow(2, (i - 1))), ChordStart.AMOUNT_OF_KEYS);
-    }
-
-    private void updateFingerTable(ChordNode inNode, int index) {
-        // In interval up to successor but not including the successor
-        int adjustedIndex = index - 1;
-        long fingerSuccId = fingerTableService.getFingers().get(adjustedIndex).getSucc().getId();
-        if (CompareUtil.between(node.getId(), true, fingerSuccId, false, inNode.getId())) {
-
-            // Update my finger table
-            fingerTableService.getFingers().get(adjustedIndex).setSucc(inNode);
-            log.info("My finger table has been updated");
-
-            ActorSelection actorRef = Util.getActorRef(getContext(), fingerTableService.getPredecessor());
-            actorRef.tell(new UpdateFinger(index, inNode), getSelf());
-        } else {
-            log.info("My finger table has not been updated");
-        }
-        printFingerTable();
-    }
-
-    @Override
-    public void postStop() throws Exception {
-        super.postStop();
-        log.info("Shutting down...");
-    }
-
-    // Util methods from here on
-
-    private boolean isFingerTableNotComplete() {
-        return fingerTableService.getFingers().stream().anyMatch(finger -> finger.getSucc() == null);
-    }
-
-    private void printFingerTable() {
-        log.info(fingerTableService.toString());
-    }
-
-    private ActorSelection getCentralNode(String centralNodeAddress) {
-        return getContext().actorSelection(centralNodeAddress);
-    }
-
-    private String getCentralNodeAddress() {
-        final String centralEntityAddress = config.getString("myapp.centralEntityAddress");
-        return "akka://ChordNetwork@" + centralEntityAddress + "/user/ChordActor";
-    }
 }
