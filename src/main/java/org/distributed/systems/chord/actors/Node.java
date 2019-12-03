@@ -41,10 +41,10 @@ public class Node extends AbstractActor {
     private String type = "";
     private long id;
 
-    public Node(String type) {
+    public Node() {
         this.manager = Tcp.get(getContext().getSystem()).manager();
         this.storageActorRef = getContext().actorOf(Props.create(StorageActor.class));
-        this.type = type;
+        this.type = getNodeType();
     }
 
     public static Props props(ActorRef manager) {
@@ -64,7 +64,7 @@ public class Node extends AbstractActor {
 
         System.out.println(this.type);
 
-        if (this.type == "central") {
+        if (this.type.equals("central")) {
             //Assumption: central node first up and never fails :D
             // thus: node initially has it's pre and suc equal it's own identity
             this.predecessor = getSelf();
@@ -75,7 +75,7 @@ public class Node extends AbstractActor {
             System.out.println("I am a central node, so I don't care about others");
         } else {
             // Assumption: Central node is on ip 127.0.0.1:25521 and is asked to join
-            final String centralNodeAddress = "akka://ChordNetwork@127.0.0.1:25521/user/ChordActor";
+            final String centralNodeAddress = getCentralNodeAddress();
             Timeout timeout = Timeout.create(Duration.ofMillis(ChordStart.STANDARD_TIME_OUT));
             System.out.println("I am a regular node, so I need my central");
             Future<ActorRef> centralNodeFuture = getContext().actorSelection(centralNodeAddress).resolveOne(timeout);
@@ -91,6 +91,25 @@ public class Node extends AbstractActor {
         }
 
         this.createMemCacheTCPSocket();
+    }
+
+    private String getNodeType() {
+        String nodeType = config.getString("myapp.nodeType");
+
+        if (System.getenv("CHORD_NODE_TYPE") != null) {
+            nodeType = System.getenv("CHORD_NODE_TYPE");
+        }
+        return nodeType;
+    }
+
+    private String getCentralNodeAddress() {
+        String centralEntityAddress = config.getString("myapp.centralEntityAddress");
+        
+        if (System.getenv("CHORD_CENTRAL_NODE") != null) {
+            centralEntityAddress = System.getenv("CHORD_CENTRAL_NODE");
+        }
+
+        return "akka://ChordNetwork@" + centralEntityAddress + "/user/ChordActor";
     }
 
     @Override
@@ -326,7 +345,15 @@ public class Node extends AbstractActor {
 
         final ActorRef tcp = Tcp.get(getContext().getSystem()).manager();
         // TODO: We need to expose this port to the outer world
-        InetSocketAddress tcp_socked = new InetSocketAddress("localhost", port);
+        // Get possible hostname:
+        String hostname = "localhost";
+
+        if (System.getenv("HOSTNAME") != null) {
+            hostname = System.getenv("HOSTNAME");
+        }
+
+
+        InetSocketAddress tcp_socked = new InetSocketAddress(hostname, port);
         Tcp.Command tcpmsg = TcpMessage.bind(getSelf(), tcp_socked, 100);
         tcp.tell(tcpmsg, getSelf());
     }

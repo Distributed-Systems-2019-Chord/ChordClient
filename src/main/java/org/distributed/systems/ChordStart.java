@@ -5,6 +5,8 @@ import akka.actor.Props;
 import com.typesafe.config.Config;
 import org.distributed.systems.chord.actors.Node;
 
+import java.util.Map;
+
 public class ChordStart {
 
     public static final int STANDARD_TIME_OUT = 1000;
@@ -15,13 +17,13 @@ public class ChordStart {
         // Create actor system
         ActorSystem system = ActorSystem.create("ChordNetwork"); // Setup actor system
 
-        Config config = system.settings().config();
-        final String nodeType = config.getString("myapp.nodeType");
+        System.out.println("\nStarting with Enviroment Variables:-\n");
 
-        if (nodeType.equals("central")) {
-            system.actorOf(Props.create(Node.class, "central"), "ChordActor");
-        } else {
-            system.actorOf(Props.create(Node.class, "regular"), "ChordActor");
+        Map <String, String> map = System.getenv();
+        for (Map.Entry <String, String> entry: map.entrySet()) {
+            System.out.println("Variable Name:- " + entry.getKey() + " Value:- " + entry.getValue());
         }
+
+        system.actorOf(Props.create(Node.class), "ChordActor");
     }
 }
