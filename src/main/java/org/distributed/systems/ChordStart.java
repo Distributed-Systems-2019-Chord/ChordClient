@@ -39,6 +39,7 @@ public class ChordStart {
                 System.out.println("Trying to retrieve a value from ip: " +args[1]);
             } else if (cmd.hasOption("kill")) {
                 node.tell("kill", ActorRef.noSender());
+//                TODO handle int argument that will specify the maount of nodes to kill
             }
             else {
                 System.out.println("No command specified!");

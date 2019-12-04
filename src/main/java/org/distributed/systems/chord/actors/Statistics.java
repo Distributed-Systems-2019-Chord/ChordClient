@@ -9,6 +9,7 @@ import com.typesafe.config.Config;
 import org.distributed.systems.ChordStart;
 import scala.concurrent.Await;
 import scala.concurrent.Future;
+import sun.awt.X11.XSystemTrayPeer;
 
 import java.io.Serializable;
 import java.time.Duration;
@@ -42,20 +43,25 @@ class Statistics extends AbstractActor {
     public Receive createReceive() {
         return receiveBuilder()
                 .matchEquals("kill", putValueMessage -> {
-
                     long envVal;
                     String hostName = config.getString("akka.remote.artery.canonical.hostname");
                     String port = config.getString("akka.remote.artery.canonical.port");
 
-
                     Random rd = new Random(); // creating Random object
                     envVal = Math.floorMod(rd.nextLong(), AMOUNT_OF_KEYS);
 
-
-//                    TODO find successor of rnaodm key
-
+                    long start_time = System.currentTimeMillis();
                     ActorRef nodeToKill = null;
+//                    TODO find successor of rnaodm key
                     nodeToKill.tell("kill", getSelf());
+//                    TODO ask network for generated key, see if it has foudn a new successor (stabilized)
+                    ActorRef newNode = null;
+                    long end_time = System.currentTimeMillis();
+                    long millisToComplete = end_time - start_time;
+                    if (nodeToKill == newNode){
+                        System.out.println("Error: het netwerk heeft geen niewue node gevonden");
+                    }
+                    System.out.println("time to stabilise: " + millisToComplete);
                 })
                 .matchEquals("fpowekfew", getValueMessage -> {
 
