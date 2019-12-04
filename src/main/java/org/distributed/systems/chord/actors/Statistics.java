@@ -7,10 +7,10 @@ import akka.event.LoggingAdapter;
 import akka.util.Timeout;
 import com.typesafe.config.Config;
 import org.distributed.systems.ChordStart;
+import org.distributed.systems.chord.util.impl.HashUtil;
 import scala.concurrent.Await;
 import scala.concurrent.Future;
 
-import javax.xml.crypto.dsig.keyinfo.KeyValue;
 import java.io.Serializable;
 import java.time.Duration;
 
@@ -20,6 +20,8 @@ class Statistics extends AbstractActor {
     private Config config = getContext().getSystem().settings().config();
     private String centralNodeAddress;
     private ActorRef centralNode;
+    public static final int m = 3; // Number of bits in key id's
+    public static final long AMOUNT_OF_KEYS = Math.round(Math.pow(2, m));
 
     public Statistics() {
         String centralEntityAddress = config.getString("myapp.centralEntityAddress");
@@ -32,14 +34,26 @@ class Statistics extends AbstractActor {
         Timeout timeout = Timeout.create(Duration.ofMillis(ChordStart.STANDARD_TIME_OUT));
         Future<ActorRef> centralNodeFuture = getContext().actorSelection(centralNodeAddress).resolveOne(timeout);
         centralNode = (ActorRef) Await.result(centralNodeFuture, timeout.duration());
+        String port = config.getString("akka.remote.artery.canonical.port");
+        System.out.println("my generated port:" + port);
     }
 
     @Override
     public Receive createReceive() {
         return receiveBuilder()
                 .matchEquals("kill", putValueMessage -> {
-                    //genrate random hash, kill successor
 
+                    long envVal;
+                    HashUtil hashUtil = new HashUtil();
+                    String hostName = config.getString("akka.remote.artery.canonical.hostname");
+                    String port = config.getString("akka.remote.artery.canonical.port");
+
+                    envVal = Math.floorMod(hashUtil.hash(hostName + ":" + port), AMOUNT_OF_KEYS);
+
+//                    TODO find successor of rnaodm key
+
+                    ActorRef nodeToKill = null;
+                    nodeToKill.tell("kill", getSelf());
                 })
                 .matchEquals("fpowekfew", getValueMessage -> {
 

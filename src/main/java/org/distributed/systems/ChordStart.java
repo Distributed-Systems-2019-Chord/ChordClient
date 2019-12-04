@@ -37,7 +37,10 @@ public class ChordStart {
             //hasOptions checks if option is present or not
             if(cmd.hasOption("get")) {
                 System.out.println("Trying to retrieve a value from ip: " +args[1]);
-            } else {
+            } else if (cmd.hasOption("kill")) {
+                node.tell("kill", ActorRef.noSender());
+            }
+            else {
                 System.out.println("No command specified!");
             }
         } catch (ParseException e) {
