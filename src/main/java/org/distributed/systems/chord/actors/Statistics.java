@@ -7,12 +7,12 @@ import akka.event.LoggingAdapter;
 import akka.util.Timeout;
 import com.typesafe.config.Config;
 import org.distributed.systems.ChordStart;
-import org.distributed.systems.chord.util.impl.HashUtil;
 import scala.concurrent.Await;
 import scala.concurrent.Future;
 
 import java.io.Serializable;
 import java.time.Duration;
+import java.util.Random;
 
 class Statistics extends AbstractActor {
     private final LoggingAdapter log = Logging.getLogger(getContext().getSystem(), this);
@@ -44,11 +44,13 @@ class Statistics extends AbstractActor {
                 .matchEquals("kill", putValueMessage -> {
 
                     long envVal;
-                    HashUtil hashUtil = new HashUtil();
                     String hostName = config.getString("akka.remote.artery.canonical.hostname");
                     String port = config.getString("akka.remote.artery.canonical.port");
 
-                    envVal = Math.floorMod(hashUtil.hash(hostName + ":" + port), AMOUNT_OF_KEYS);
+
+                    Random rd = new Random(); // creating Random object
+                    envVal = Math.floorMod(rd.nextLong(), AMOUNT_OF_KEYS);
+
 
 //                    TODO find successor of rnaodm key
 
