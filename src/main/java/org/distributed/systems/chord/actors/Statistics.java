@@ -49,20 +49,28 @@ public class Statistics extends AbstractActor {
                 .matchEquals("kill", msg -> {
                     System.out.println("statistics actor gonna kill");
                     Timeout timeout = Timeout.create(Duration.ofMillis(ChordStart.STANDARD_TIME_OUT));
-                    long envVal;
+                    long envVal = 1;
 
-//                    generate random key
-                    Random rd = new Random();
-                    envVal = Math.floorMod(rd.nextLong(), AMOUNT_OF_KEYS);
-                    System.out.println("generated key: " + envVal);
+                    ActorRef nodeToKill = null;
+                    boolean randomKeyIsCentral = true;
+                    while(randomKeyIsCentral){
+//                          generate random key
+                        Random rd = new Random();
+                        envVal = Math.floorMod(rd.nextLong(), AMOUNT_OF_KEYS);
 
-//                    find successor of random key
-                    Future<Object> findSuccessorFuture = Patterns.ask(centralNode, new FindSuccessor.Request(envVal, 0), timeout);
-                    FindSuccessor.Reply rply = (FindSuccessor.Reply) Await.result(findSuccessorFuture, timeout.duration());
+                        System.out.println("generated key: " + envVal);
 
-                    System.out.println("returned key: " + rply.id);
-                    System.out.println("returned node: " + rply.succesor.toString());
-                    ActorRef nodeToKill = rply.succesor;
+//                         find successor of random key
+                        Future<Object> findSuccessorFuture = Patterns.ask(centralNode, new FindSuccessor.Request(envVal, 0), timeout);
+                        FindSuccessor.Reply rply = (FindSuccessor.Reply) Await.result(findSuccessorFuture, timeout.duration());
+
+                        System.out.println("returned key: " + rply.id);
+                        System.out.println("returned node: " + rply.succesor.toString());
+                        nodeToKill = rply.succesor;
+                        randomKeyIsCentral = centralNode.equals(nodeToKill);
+                        System.out.println("Generatign new key, we dotn wanna kill the cnertal node");
+                        Thread.sleep(100);
+                    }
 
 
 //                    lets kill the node and see how long it takes to stabilize
