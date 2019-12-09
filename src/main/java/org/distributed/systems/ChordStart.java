@@ -38,6 +38,14 @@ public class ChordStart {
                 .desc("kill random node")
                 .build());
 
+        // add option "-killbtach"
+        options.addOption(Option.builder()
+                .longOpt("killbatch")
+                .argName("amount" )
+                .hasArg()
+                .desc("kill x random nodes")
+                .build());
+
         //parse the options passed as command line arguments
         CommandLine cmd = null;
         try {
@@ -49,6 +57,10 @@ public class ChordStart {
             } else if (cmd.hasOption("kill")) {
                 System.out.println("!!! killing random node!!!");
                 node.tell("kill", ActorRef.noSender());
+//                TODO handle int argument that will specify the maount of nodes to kill
+            }else if (cmd.hasOption("killbatch")) {
+                System.out.println("!!! killing random nodes in batch!!!");
+                node.tell("killbatch", ActorRef.noSender());
 //                TODO handle int argument that will specify the maount of nodes to kill
             }
             else {
