@@ -24,7 +24,7 @@ public class Statistics extends AbstractActor {
     private Config config = getContext().getSystem().settings().config();
     private String centralNodeAddress;
     private ActorRef centralNode;
-    public static final int m = 12; // Number of bits in key id's
+    public static final int m = 100; // Number of bits in key id's
     public static final long AMOUNT_OF_KEYS = Math.round(Math.pow(2, m));
 
     public Statistics() {
@@ -46,54 +46,6 @@ public class Statistics extends AbstractActor {
     @Override
     public Receive createReceive() {
         return receiveBuilder()
-                .matchEquals("kill", msg -> {
-                    System.out.println("statistics actor gonna kill");
-                    Timeout timeout = Timeout.create(Duration.ofMillis(ChordStart.STANDARD_TIME_OUT));
-                    long generatedKey = 1;
-
-                    ActorRef nodeToKill = null;
-                    boolean randomKeyIsCentral = true;
-                    while(randomKeyIsCentral){
-//                          generate random key
-                        Random rd = new Random();
-                        generatedKey = Math.floorMod(rd.nextLong(), AMOUNT_OF_KEYS);
-
-                        System.out.println("generated key: " + generatedKey);
-
-//                         find successor of random key
-                        Future<Object> findSuccessorFuture = Patterns.ask(centralNode, new FindSuccessor.Request(generatedKey, 0), timeout);
-                        FindSuccessor.Reply rply = (FindSuccessor.Reply) Await.result(findSuccessorFuture, timeout.duration());
-
-                        System.out.println("returned key: " + rply.id);
-                        System.out.println("returned node: " + rply.succesor.toString());
-                        nodeToKill = rply.succesor;
-                        randomKeyIsCentral = centralNode.equals(nodeToKill);
-                        System.out.println("Generatign new key, we dotn wanna kill the cnertal node");
-                        Thread.sleep(100);
-                    }
-
-
-//                    lets kill the node and see how long it takes to stabilize
-                    nodeToKill.tell("killActor", getSelf());
-
-//                    start timer
-                    long start_time = System.currentTimeMillis();
-
-//                    TODO ask network for generated key, see if it has foudn a new successor (stabilized)
-                    Future<Object> findSuccessorFuture1 = Patterns.ask(centralNode, new FindSuccessor.Request(generatedKey, 0), timeout);
-                    FindSuccessor.Reply rply1 = (FindSuccessor.Reply) Await.result(findSuccessorFuture1, timeout.duration());
-
-                    System.out.println("returned key: " + rply1.id);
-                    System.out.println("returned node: " + rply1.succesor.toString());
-                    ActorRef newNode = rply1.succesor;
-
-                    long end_time = System.currentTimeMillis();
-                    long millisToComplete = end_time - start_time;
-                    if (nodeToKill.equals(newNode)){
-                        System.out.println("Error: het netwerk heeft geen niewue node gevonden");
-                    }
-                    System.out.println("time to stabilise: " + millisToComplete);
-                })
                 .matchEquals("killbatch", msg -> {
                     //hard coded for now TODO
                     int amountOfNodesToKill = 1;
@@ -109,7 +61,7 @@ public class Statistics extends AbstractActor {
                         while (randomKeyIsCentral || duplicateNode) {
 //                          generate random key
                             Random rd = new Random();
-                            generatedKey[i] = Math.floorMod(rd.nextLong(), AMOUNT_OF_KEYS);
+                            generatedKey[i] = Math.floorMod(rd.nextLong(), AMOUNT_OF_KEYS);;
 
                             System.out.println("--------------------------");
                             System.out.println("generated key: " + generatedKey[i]);
@@ -179,8 +131,65 @@ public class Statistics extends AbstractActor {
                     long millisToComplete = end_time - start_time;
                     System.out.println("time to stabilise: " + millisToComplete);
                 })
-                .matchEquals("fpowekfew", getValueMessage -> {
+                .matchEquals("getAverageLookupTime", msg -> {
+                    //hard coded for now TODO
+                    int amountOfKeys = 100;
+                    System.out.println("statistics actor gonna get average lookup time in batch");
+                    Timeout timeout = Timeout.create(Duration.ofMillis(ChordStart.STANDARD_TIME_OUT));
+                    long[] generatedKey= new long[amountOfKeys];
+                    long total_time = 0;
 
+
+                    for (int i = 0; i < amountOfKeys; i++) {
+//                          generate random key
+                        Random rd = new Random();
+                        generatedKey[i] = Math.floorMod(rd.nextLong(), AMOUNT_OF_KEYS);
+
+                        System.out.println("--------------------------");
+                        System.out.println("generated key: " + generatedKey[i]);
+
+
+                        long start_time = System.currentTimeMillis();
+
+//                         find successor of random key
+                        Future<Object> findSuccessorFuture = Patterns.ask(centralNode, new FindSuccessor.Request(generatedKey[i], 0), timeout);
+                        FindSuccessor.Reply rply = (FindSuccessor.Reply) Await.result(findSuccessorFuture, timeout.duration());
+
+                        long stop_time = System.currentTimeMillis();
+                        total_time += stop_time - start_time;
+                    }
+
+                    System.out.println("average lookup time: " + total_time/amountOfKeys);
+                })
+                .matchEquals("getAverageHops", msg -> {
+                    //hard coded for now TODO
+                    int amountOfKeys = 100;
+                    System.out.println("statistics actor gonna get average lookup time in batch");
+                    Timeout timeout = Timeout.create(Duration.ofMillis(ChordStart.STANDARD_TIME_OUT));
+                    long[] generatedKey= new long[amountOfKeys];
+                    long total_time = 0;
+
+
+                    for (int i = 0; i < amountOfKeys; i++) {
+//                          generate random key
+                        Random rd = new Random();
+                        generatedKey[i] = Math.floorMod(rd.nextLong(), AMOUNT_OF_KEYS);
+
+                        System.out.println("--------------------------");
+                        System.out.println("generated key: " + generatedKey[i]);
+
+
+                        long start_time = System.currentTimeMillis();
+
+//                         find successor of random key
+                        Future<Object> findSuccessorFuture = Patterns.ask(centralNode, new FindSuccessor.Request(generatedKey[i], 0), timeout);
+                        FindSuccessor.Reply rply = (FindSuccessor.Reply) Await.result(findSuccessorFuture, timeout.duration());
+
+                        long stop_time = System.currentTimeMillis();
+                        total_time += stop_time - start_time;
+                    }
+
+                    System.out.println("average lookup time: " + total_time/amountOfKeys);
                 })
                 .build();
     }
