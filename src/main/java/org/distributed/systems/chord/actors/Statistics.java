@@ -89,14 +89,14 @@ public class Statistics extends AbstractActor {
 
                     long end_time = System.currentTimeMillis();
                     long millisToComplete = end_time - start_time;
-                    if (nodeToKill == newNode){
+                    if (nodeToKill.equals(newNode)){
                         System.out.println("Error: het netwerk heeft geen niewue node gevonden");
                     }
                     System.out.println("time to stabilise: " + millisToComplete);
                 })
                 .matchEquals("killbatch", msg -> {
                     //hard coded for now TODO
-                    int amountOfNodesToKill = 4;
+                    int amountOfNodesToKill = 1;
                     System.out.println("statistics actor gonna kill in batch");
                     Timeout timeout = Timeout.create(Duration.ofMillis(ChordStart.STANDARD_TIME_OUT));
                     long[] generatedKey= new long[1000];
@@ -105,7 +105,8 @@ public class Statistics extends AbstractActor {
 //                    TODO find unique nodes, otherwise he will trhow an out future timed out exception
                     for (int i = 0; i < amountOfNodesToKill; i++) {
                         boolean randomKeyIsCentral = true;
-                        while (randomKeyIsCentral) {
+                        boolean duplicateNode = true;
+                        while (randomKeyIsCentral || duplicateNode) {
 //                          generate random key
                             Random rd = new Random();
                             generatedKey[i] = Math.floorMod(rd.nextLong(), AMOUNT_OF_KEYS);
@@ -125,14 +126,27 @@ public class Statistics extends AbstractActor {
                                 System.out.println("Generatign new key, we dotn wanna kill the cnertal node");
                                 Thread.sleep(100);
                             }else{
-                                System.out.println("we will kill this node ");
+                                duplicateNode = false;
+                                for (int j = 0; j < i; j++) {
+                                    if (nodeToKill[i].equals(nodeToKill[j])){
+                                        duplicateNode = true;
+                                    }
+                                }
+                                if(duplicateNode){
+                                    System.out.println("duplicate node, looking for new node");
+                                    Thread.sleep(100);
+                                }else {
+                                    System.out.println("we will kill this node ");
+                                }
                             }
                         }
                     }
 
 //                    lets kill the node and see how long it takes to stabilize
                     for (int i = 0; i < amountOfNodesToKill; i++) {
-                        nodeToKill[i].tell("killActor", getSelf());
+//                        nodeToKill[i].tell("killActor", getSelf());
+                        Future<Object> findSuccessorFuture = Patterns.ask(nodeToKill[i], "killActor", timeout);
+                        FindSuccessor.Reply rply = (FindSuccessor.Reply) Await.result(findSuccessorFuture, timeout.duration());
                     }
 
 //                    start timer
@@ -140,19 +154,25 @@ public class Statistics extends AbstractActor {
                     System.out.println("---- retrieving new responsible ndoes ----");
 
                     for (int i = 0; i < amountOfNodesToKill; i++) {
-//                    TODO ask network for generated key, see if it has foudn a new successor (stabilized)
-                        Future<Object> findSuccessorFuture1 = Patterns.ask(centralNode, new FindSuccessor.Request(generatedKey[i], 0), timeout);
-                        FindSuccessor.Reply rply1 = (FindSuccessor.Reply) Await.result(findSuccessorFuture1, timeout.duration());
+                        boolean nodeIsNotStabilized = true;
+                        while(nodeIsNotStabilized) {
+//                         TODO ask network for generated key, see if it has foudn a new successor (stabilized)
+                            Future<Object> findSuccessorFuture1 = Patterns.ask(centralNode, new FindSuccessor.Request(generatedKey[i], 0), timeout);
+                            FindSuccessor.Reply rply1 = (FindSuccessor.Reply) Await.result(findSuccessorFuture1, timeout.duration());
 
-                        System.out.println("------------------------");
-                        System.out.println("findign successor of key: " + generatedKey[i]);
-                        System.out.println("node key: " + rply1.id);
-                        System.out.println("node: " + rply1.succesor.toString());
-                        ActorRef newNode = rply1.succesor;
+                            System.out.println("------------------------");
+                            System.out.println("findign successor of key: " + generatedKey[i]);
+                            System.out.println("node key: " + rply1.id);
+                            System.out.println("node: " + rply1.succesor.toString());
+                            System.out.println("old (killed) successor node: " + nodeToKill[i]);
+                            ActorRef newNode = rply1.succesor;
 
-                        if (nodeToKill[i] == newNode) {
-                            System.out.println("Error: het netwerk heeft geen niewue node gevonden");
-//                            TODO wait till it has find a new node
+                            if (nodeToKill[i].equals(newNode)) {
+                                nodeIsNotStabilized = false;
+                            }else{
+                                System.out.println("Error: het netwerk heeft geen niewue node gevonden");
+                                Thread.sleep(100);
+                            }
                         }
                     }
                     long end_time = System.currentTimeMillis();
