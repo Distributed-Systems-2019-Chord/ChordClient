@@ -3,13 +3,9 @@ package org.distributed.systems;
 import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 import akka.actor.Props;
-import com.sun.org.glassfish.external.statistics.Statistic;
 import org.apache.commons.cli.*;
-import org.distributed.systems.chord.actors.Node;
 
-import org.apache.commons.cli.*;
 import org.distributed.systems.chord.actors.Statistics;
-import scala.concurrent.Future;
 
 public class ChordStart {
     private static CommandLineParser parser = new DefaultParser();
@@ -46,6 +42,14 @@ public class ChordStart {
                 .desc("kill x random nodes")
                 .build());
 
+        // add option "-killbtach"
+        options.addOption(Option.builder()
+                .longOpt("getAverageHops")
+                .argName("amount" )
+                .hasArg()
+                .desc("getAverageHops for x keys")
+                .build());
+
         //parse the options passed as command line arguments
         CommandLine cmd = null;
         try {
@@ -61,6 +65,10 @@ public class ChordStart {
             }else if (cmd.hasOption("killbatch")) {
                 System.out.println("!!! killing random nodes in batch!!!");
                 node.tell("killbatch", ActorRef.noSender());
+//                TODO handle int argument that will specify the maount of nodes to kill
+            }else if (cmd.hasOption("getAverageHops")) {
+                System.out.println("!!!getting average hop time for x nodes!!!");
+                node.tell("getAverageHops", ActorRef.noSender());
 //                TODO handle int argument that will specify the maount of nodes to kill
             }
             else {

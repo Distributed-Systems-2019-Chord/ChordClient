@@ -24,7 +24,7 @@ public class Statistics extends AbstractActor {
     private Config config = getContext().getSystem().settings().config();
     private String centralNodeAddress;
     private ActorRef centralNode;
-    public static final int m = 100; // Number of bits in key id's
+    public static final int m = 10; // Number of bits in key id's
     public static final long AMOUNT_OF_KEYS = Math.round(Math.pow(2, m));
 
     public Statistics() {
@@ -67,7 +67,7 @@ public class Statistics extends AbstractActor {
                             System.out.println("generated key: " + generatedKey[i]);
 
 //                         find successor of random key
-                            Future<Object> findSuccessorFuture = Patterns.ask(centralNode, new FindSuccessor.Request(generatedKey[i], 0), timeout);
+                            Future<Object> findSuccessorFuture = Patterns.ask(centralNode, new FindSuccessor.Request(generatedKey[i], 0, 0), timeout);
                             FindSuccessor.Reply rply = (FindSuccessor.Reply) Await.result(findSuccessorFuture, timeout.duration());
 
                             System.out.println("node key: " + rply.id);
@@ -109,7 +109,7 @@ public class Statistics extends AbstractActor {
                         boolean nodeIsNotStabilized = true;
                         while(nodeIsNotStabilized) {
 //                         TODO ask network for generated key, see if it has foudn a new successor (stabilized)
-                            Future<Object> findSuccessorFuture1 = Patterns.ask(centralNode, new FindSuccessor.Request(generatedKey[i], 0), timeout);
+                            Future<Object> findSuccessorFuture1 = Patterns.ask(centralNode, new FindSuccessor.Request(generatedKey[i], 0, 0), timeout);
                             FindSuccessor.Reply rply1 = (FindSuccessor.Reply) Await.result(findSuccessorFuture1, timeout.duration());
 
                             System.out.println("------------------------");
@@ -152,7 +152,7 @@ public class Statistics extends AbstractActor {
                         long start_time = System.currentTimeMillis();
 
 //                         find successor of random key
-                        Future<Object> findSuccessorFuture = Patterns.ask(centralNode, new FindSuccessor.Request(generatedKey[i], 0), timeout);
+                        Future<Object> findSuccessorFuture = Patterns.ask(centralNode, new FindSuccessor.Request(generatedKey[i], 0, 0), timeout);
                         FindSuccessor.Reply rply = (FindSuccessor.Reply) Await.result(findSuccessorFuture, timeout.duration());
 
                         long stop_time = System.currentTimeMillis();
@@ -163,12 +163,13 @@ public class Statistics extends AbstractActor {
                 })
                 .matchEquals("getAverageHops", msg -> {
                     //hard coded for now TODO
-                    int amountOfKeys = 100;
+                    int amountOfKeys = 5;
                     System.out.println("statistics actor gonna get average lookup time in batch");
                     Timeout timeout = Timeout.create(Duration.ofMillis(ChordStart.STANDARD_TIME_OUT));
                     long[] generatedKey= new long[amountOfKeys];
-                    long total_time = 0;
 
+                    long total_time = 0;
+                    long totalAmountOfHops = 0;
 
                     for (int i = 0; i < amountOfKeys; i++) {
 //                          generate random key
@@ -182,13 +183,17 @@ public class Statistics extends AbstractActor {
                         long start_time = System.currentTimeMillis();
 
 //                         find successor of random key
-                        Future<Object> findSuccessorFuture = Patterns.ask(centralNode, new FindSuccessor.Request(generatedKey[i], 0), timeout);
+                        Future<Object> findSuccessorFuture = Patterns.ask(centralNode, new FindSuccessor.Request(generatedKey[i], 0, 0), timeout);
                         FindSuccessor.Reply rply = (FindSuccessor.Reply) Await.result(findSuccessorFuture, timeout.duration());
+
+                        System.out.println("amount of hops: " + rply.amountOfHops);
+                        totalAmountOfHops += rply.amountOfHops;
 
                         long stop_time = System.currentTimeMillis();
                         total_time += stop_time - start_time;
                     }
 
+                    System.out.println("average hops: " + totalAmountOfHops/amountOfKeys);
                     System.out.println("average lookup time: " + total_time/amountOfKeys);
                 })
                 .build();
