@@ -77,7 +77,11 @@ public class Node extends AbstractActor {
         this.id = envVal;
         System.out.println("Node Id " + this.id);
 
-        System.out.println(this.type);
+        if(nodeType.equals("regular")){
+            final String centralEntityAddress = config.getString("myapp.centralEntityAddress");
+            String centralNodeAddress = "akka://ChordNetwork@" + centralEntityAddress + "/user/ChordActor0";
+            log.info("Sending message to: " + centralNodeAddress);
+            ActorSelection selection = getContext().actorSelection(centralNodeAddress);
 
         if (this.type.equals("central")) {
             //Assumption: central node first up and never fails :D
