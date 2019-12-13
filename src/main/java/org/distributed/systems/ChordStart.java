@@ -44,7 +44,7 @@ public class ChordStart {
 
         // add option "-killbtach"
         options.addOption(Option.builder()
-                .longOpt("getAverageHops")
+                .longOpt("getaveragehops")
                 .argName("amount" )
                 .hasArg()
                 .desc("getAverageHops for x keys")

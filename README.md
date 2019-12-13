@@ -1,7 +1,5 @@
-# ChordAkka
-A Chord implementation based on Akka
-
-For now it's based on the following example: https://developer.lightbend.com/guides/akka-quickstart-java/index.html
+# ChordCLient
+Testing application for the Chord implementation
 
 # Prerequisites 
 - [Maven](https://maven.apache.org/)
@@ -10,17 +8,16 @@ For now it's based on the following example: https://developer.lightbend.com/gui
 ## How to run
 run: `mvn compile exec:exec`
 
-To run central node use parameter: `-Dconfig.resource=/centralNode.conf`
+Parameters:
 
-To run regular nodes use parameter: `-Dconfig.resource=/regularNode.conf`
+Killing 100 random nodes:
+`-killBatch 100`
 
-Test run: first run central node then run the regular node
+Getting the average amount of hops for 100 nodes:
+`-getaveragehops 100`
 
 ## Branching
 Branching will be done according the [Feature Branching Workflow](https://www.atlassian.com/git/tutorials/comparing-workflows/feature-branch-workflow).
-
-## Useful links
-- https://doc.akka.io/docs/akka/current/typed/guide/index.html
 
 ## Code Formatting
 Standard IntelliJ java formatting profile
