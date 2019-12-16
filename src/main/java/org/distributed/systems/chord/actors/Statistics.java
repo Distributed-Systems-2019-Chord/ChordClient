@@ -24,7 +24,7 @@ public class Statistics extends AbstractActor {
     private Config config = getContext().getSystem().settings().config();
     private String centralNodeAddress;
     private ActorRef centralNode;
-    public static final int m = 10; // Number of bits in key id's
+    public static final int m = 64; // Number of bits in key id's
     public static final long AMOUNT_OF_KEYS = Math.round(Math.pow(2, m));
 
     public Statistics() {
@@ -163,7 +163,7 @@ public class Statistics extends AbstractActor {
                 })
                 .matchEquals("getAverageHops", msg -> {
                     //hard coded for now TODO
-                    int amountOfKeys = 5;
+                    int amountOfKeys = 5000;
                     System.out.println("statistics actor gonna get average lookup time in batch");
                     Timeout timeout = Timeout.create(Duration.ofMillis(ChordStart.STANDARD_TIME_OUT));
                     long[] generatedKey= new long[amountOfKeys];
@@ -193,6 +193,7 @@ public class Statistics extends AbstractActor {
                         total_time += stop_time - start_time;
                     }
 
+                    System.out.println("total hops: " + totalAmountOfHops);
                     System.out.println("average hops: " + totalAmountOfHops/amountOfKeys);
                     System.out.println("average lookup time: " + total_time/amountOfKeys);
                 })

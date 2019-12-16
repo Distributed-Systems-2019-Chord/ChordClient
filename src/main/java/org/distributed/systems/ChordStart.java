@@ -18,14 +18,6 @@ public class ChordStart {
         // create Options object
         Options options = new Options();
 
-        // add option "-getValue"
-        options.addOption(Option.builder()
-                .longOpt("get")
-                .argName("ip" )
-                .hasArg()
-                .desc("Get value from node with specified IP")
-                .build());
-
         // add option "-killValue"
         options.addOption(Option.builder()
                 .longOpt("kill")
@@ -56,9 +48,7 @@ public class ChordStart {
             cmd = parser.parse(options, args);
 
             //hasOptions checks if option is present or not
-            if(cmd.hasOption("get")) {
-                System.out.println("Trying to retrieve a value from ip: " +args[1]);
-            } else if (cmd.hasOption("kill")) {
+            if (cmd.hasOption("kill")) {
                 System.out.println("!!! killing random node!!!");
                 node.tell("kill", ActorRef.noSender());
 //                TODO handle int argument that will specify the maount of nodes to kill
