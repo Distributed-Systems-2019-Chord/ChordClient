@@ -67,7 +67,7 @@ public class Statistics extends AbstractActor {
                             System.out.println("generated key: " + generatedKey[i]);
 
 //                         find successor of random key
-                            Future<Object> findSuccessorFuture = Patterns.ask(centralNode, new FindSuccessor.Request(generatedKey[i], 0, 0), timeout);
+                            Future<Object> findSuccessorFuture = Patterns.ask(centralNode, new FindSuccessor.Request(generatedKey[i], 0, getSelf(),0), timeout);
                             FindSuccessor.Reply rply = (FindSuccessor.Reply) Await.result(findSuccessorFuture, timeout.duration());
 
                             System.out.println("node key: " + rply.id);
@@ -109,7 +109,7 @@ public class Statistics extends AbstractActor {
                         boolean nodeIsNotStabilized = true;
                         while(nodeIsNotStabilized) {
 //                         TODO ask network for generated key, see if it has foudn a new successor (stabilized)
-                            Future<Object> findSuccessorFuture1 = Patterns.ask(centralNode, new FindSuccessor.Request(generatedKey[i], 0, 0), timeout);
+                            Future<Object> findSuccessorFuture1 = Patterns.ask(centralNode, new FindSuccessor.Request(generatedKey[i], 0,getSelf(), 0), timeout);
                             FindSuccessor.Reply rply1 = (FindSuccessor.Reply) Await.result(findSuccessorFuture1, timeout.duration());
 
                             System.out.println("------------------------");
@@ -152,7 +152,7 @@ public class Statistics extends AbstractActor {
                         long start_time = System.currentTimeMillis();
 
 //                         find successor of random key
-                        Future<Object> findSuccessorFuture = Patterns.ask(centralNode, new FindSuccessor.Request(generatedKey[i], 0, 0), timeout);
+                        Future<Object> findSuccessorFuture = Patterns.ask(centralNode, new FindSuccessor.Request(generatedKey[i], 0, getSelf(), 0), timeout);
                         FindSuccessor.Reply rply = (FindSuccessor.Reply) Await.result(findSuccessorFuture, timeout.duration());
 
                         long stop_time = System.currentTimeMillis();
@@ -183,7 +183,7 @@ public class Statistics extends AbstractActor {
                         long start_time = System.currentTimeMillis();
 
 //                         find successor of random key
-                        Future<Object> findSuccessorFuture = Patterns.ask(centralNode, new FindSuccessor.Request(generatedKey[i], 0, 0), timeout);
+                        Future<Object> findSuccessorFuture = Patterns.ask(centralNode, new FindSuccessor.Request(generatedKey[i], 0, getSelf(), 0), timeout);
                         FindSuccessor.Reply rply = (FindSuccessor.Reply) Await.result(findSuccessorFuture, timeout.duration());
 
                         System.out.println("amount of hops: " + rply.amountOfHops);

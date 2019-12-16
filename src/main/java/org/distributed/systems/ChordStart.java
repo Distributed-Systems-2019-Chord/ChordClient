@@ -56,7 +56,7 @@ public class ChordStart {
                 System.out.println("!!! killing random nodes in batch!!!");
                 node.tell("killbatch", ActorRef.noSender());
 //                TODO handle int argument that will specify the maount of nodes to kill
-            }else if (cmd.hasOption("getAverageHops")) {
+            }else if (cmd.hasOption("getaveragehops")) {
                 System.out.println("!!!getting average hop time for x nodes!!!");
                 node.tell("getAverageHops", ActorRef.noSender());
 //                TODO handle int argument that will specify the maount of nodes to kill

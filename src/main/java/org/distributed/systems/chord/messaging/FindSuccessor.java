@@ -7,11 +7,13 @@ public class FindSuccessor {
     public static class Request implements Command {
         public final long id;
         public final int fingerTableIndex;
+        public final ActorRef originalSender;
         public final long amountOfHops;
 
-        public Request(long id, int fingerTableIndex, long amountOfHops) {
+        public Request(long id, int fingerTableIndex, ActorRef originalSender, long amountOfHops) {
             this.id = id;
             this.fingerTableIndex = fingerTableIndex;
+            this.originalSender = originalSender;
             this.amountOfHops = amountOfHops;
         }
     }
