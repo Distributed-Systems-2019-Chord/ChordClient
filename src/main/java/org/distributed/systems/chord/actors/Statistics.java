@@ -24,7 +24,7 @@ public class Statistics extends AbstractActor {
     private Config config = getContext().getSystem().settings().config();
     private String centralNodeAddress;
     private ActorRef centralNode;
-    public static final int m = 64; // Number of bits in key id's
+    public static final int m = 16; // Number of bits in key id's
     public static final long AMOUNT_OF_KEYS = Math.round(Math.pow(2, m));
 
     public Statistics() {
@@ -48,7 +48,7 @@ public class Statistics extends AbstractActor {
         return receiveBuilder()
                 .matchEquals("killbatch", msg -> {
                     //hard coded for now TODO
-                    int amountOfNodesToKill = 1;
+                    int amountOfNodesToKill = 3;
                     System.out.println("statistics actor gonna kill in batch");
                     Timeout timeout = Timeout.create(Duration.ofMillis(ChordStart.STANDARD_TIME_OUT));
                     long[] generatedKey= new long[1000];
@@ -194,8 +194,8 @@ public class Statistics extends AbstractActor {
                     }
 
                     System.out.println("total hops: " + totalAmountOfHops);
-                    System.out.println("average hops: " + totalAmountOfHops/amountOfKeys);
-                    System.out.println("average lookup time: " + total_time/amountOfKeys);
+                    System.out.println("average hops: " + totalAmountOfHops/(float)amountOfKeys);
+                    System.out.println("average lookup time: " + total_time/(float)amountOfKeys);
                 })
                 .build();
     }
