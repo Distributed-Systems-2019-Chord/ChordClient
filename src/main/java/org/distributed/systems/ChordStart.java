@@ -42,6 +42,14 @@ public class ChordStart {
                 .desc("getAverageHops for x keys")
                 .build());
 
+        // add option "-measureStableliseTimeAfterJoins"
+        options.addOption(Option.builder()
+                .longOpt("measureStableliseTimeAfterJoins")
+                .argName("amount" )
+                .hasArg()
+                .desc("STABILSIE TIME for x keys")
+                .build());
+
         //parse the options passed as command line arguments
         CommandLine cmd = null;
         try {
@@ -59,6 +67,10 @@ public class ChordStart {
             }else if (cmd.hasOption("getaveragehops")) {
                 System.out.println("!!!getting average hop time for x nodes!!!");
                 node.tell("getAverageHops", ActorRef.noSender());
+//                TODO handle int argument that will specify the maount of nodes to kill
+            }else if (cmd.hasOption("measureStableliseTimeAfterJoins")) {
+                System.out.println("!!!getting average STABILISE time for x nodes!!!");
+                node.tell("measureStableliseTimeAfterJoins", ActorRef.noSender());
 //                TODO handle int argument that will specify the maount of nodes to kill
             }
             else {

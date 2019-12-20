@@ -197,6 +197,53 @@ public class Statistics extends AbstractActor {
                     System.out.println("average hops: " + totalAmountOfHops/(float)amountOfKeys);
                     System.out.println("average lookup time: " + total_time/(float)amountOfKeys);
                 })
+                .matchEquals("measureStableliseTimeAfterJoins", msg -> {
+                    //hard coded for now TODO
+                    int amountOfJoiningNodes = 3;
+                    System.out.println("statistics actor gonna get STABILISE TIME lookup time in batch");
+
+                    Timeout timeout = Timeout.create(Duration.ofMillis(ChordStart.STANDARD_TIME_OUT));
+                    long[] generatedKey= new long[amountOfJoiningNodes];
+
+                    long total_time = 0;
+
+//                    step1: spawn x amount of nodes with defined keys
+                    for (int i = 0; i < amountOfJoiningNodes; i++) {
+//                          generate random key
+                        Random rd = new Random();
+                        generatedKey[i] = Math.floorMod(rd.nextLong(), AMOUNT_OF_KEYS);
+
+                        System.out.println("--------------------------");
+                        System.out.println("generated key: " + generatedKey[i]);
+
+                        Process p1 = Runtime.getRuntime().exec(new String[]{"bash","-c","export NODE_ID=" + generatedKey[i] + " && java -Dconfig.resource=/regularNode.conf -jar ~/IdeaProjects/ChordAkka/target/chord-1.0-allinone.jar"});
+                    }
+
+//                    step2: test if system stabilsied
+
+                    long start_time = System.currentTimeMillis();
+                    for (int i = 0; i < amountOfJoiningNodes; i++) {
+                        boolean notStabilised = true;
+                        while(notStabilised) {
+//                         find successor of random key
+                            Future<Object> findSuccessorFuture = Patterns.ask(centralNode, new FindSuccessor.Request(generatedKey[i], 0, getSelf(), 0), timeout);
+                            FindSuccessor.Reply rply = (FindSuccessor.Reply) Await.result(findSuccessorFuture, timeout.duration());
+
+                            System.out.println("node with key: " + generatedKey[i] + "Reply (node)id: " + rply.id);
+
+                            if (rply.id == generatedKey[i]) {
+                                notStabilised = false;
+                            }else{
+                                Thread.sleep(20);
+                            }
+                        }
+                    }
+
+                    long stop_time = System.currentTimeMillis();
+                    total_time += stop_time - start_time;
+
+                    System.out.println("total stabilise time: "+ total_time );
+                })
                 .build();
     }
 }
