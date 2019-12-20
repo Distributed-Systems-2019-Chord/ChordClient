@@ -199,7 +199,7 @@ public class Statistics extends AbstractActor {
                 })
                 .matchEquals("measureStableliseTimeAfterJoins", msg -> {
                     //hard coded for now TODO
-                    int amountOfJoiningNodes = 10;
+                    int amountOfJoiningNodes = 20;
                     System.out.println("statistics actor gonna get STABILISE TIME lookup time in batch");
 
                     Timeout timeout = Timeout.create(Duration.ofMillis(ChordStart.STANDARD_TIME_OUT));
