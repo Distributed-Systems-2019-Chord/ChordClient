@@ -216,7 +216,7 @@ public class Statistics extends AbstractActor {
                         System.out.println("--------------------------");
                         System.out.println("generated key: " + generatedKey[i]);
 
-                        Process p1 = Runtime.getRuntime().exec(new String[]{"bash","-c","export NODE_ID=" + generatedKey[i] + " && java -Dconfig.resource=/regularNode.conf -jar ~/IdeaProjects/ChordAkka/target/chord-1.0-allinone.jar"});
+                        Process p1 = Runtime.getRuntime().exec(new String[]{"bash","-c","export NODE_ID=" + generatedKey[i] + " && java -Dconfig.resource=/regularNode.conf -jar ~/ChordAkka/target/chord-1.0-allinone.jar"});
                     }
 
 //                    step2: test if system stabilsied
